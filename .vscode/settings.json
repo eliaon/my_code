@@ -1,0 +1,8 @@
+{
+    "code-runner.executorMap": {
+        "cpp": "g++ -std=c++17 -O2 $fileName -o $fileNameWithoutExt && ./$fileNameWithoutExt"
+    },
+    "code-runner.runInTerminal": true,
+    "code-runner.clearPreviousOutput": true,
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc-13"
+}
