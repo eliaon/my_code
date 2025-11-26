@@ -238,23 +238,20 @@ double N_GBW(double r, double x,
 }
 // ---------------- N_bCGC ----------------
 double N_bCGC(double r, double x, double b,
-              double x0 = 1.84e-6, double lambda_bCGC = 0.119)
+              double x0 = 1.84e-6, double Q0sq = 1.0)
 {
-    double Qs2 = QS2_bCGC(x, b, x0, 1.0);
-    double N_0 = 0.558;
-    double c = N_0*gamma_s/(1-N_0);
-    double A = -c*c/log(1.0-N_0);
-    double B = 0.5*std::pow(1.0-N_0, -1.0/c);
-    double rQs = r * sqrt(Qs2);
-    double Y = log(1.0/x);
-    double K = 9.9;
+    const double gamma_s = 0.46;
+    const double N0 = 0.558;
+    const double B_bCGC = 4.0; // ou 7.5? ver literatura
 
-    if (rQs <= 2.0) {
-        double term1 = N_0*pow(rQs*rQs/4.0, 2.0*(gamma_s + log(2.0/rQs)/(K*lambda_bCGC*Y)));
-        return term1;
+    double Qs2 = Q0sq * pow(x0 / x, lambda) * exp(-b * b / (2.0 * B_bCGC));
+    double r2Qs2 = r * r * Qs2;
+
+    if (r2Qs2 <= 4.0) {
+        return N0 * pow(r2Qs2 / 4.0, gamma_s);
     } else {
-        
-        return 1.0 - exp(-A * log(B * rQs * rQs)*log(B * rQs * rQs) );
+        double log_term = log(r2Qs2 / 4.0 + M_E); // M_E = e ≈ 2.718...
+        return 1.0 - exp(-pow(r2Qs2 / 4.0, gamma_s) * log_term);
     }
 }
 //----------------- plot n_bCGC -----------------------
@@ -371,7 +368,7 @@ double calculate_amplitude(double x, double Q2, std::string N_method, const Meso
         auto fr = [&](double r) {
             // integrar em b
             auto fb = [&](double b) {
-                return frb(r, b) * 2.0 * M_PI * b; // incluir fator 2πb do jacobiano
+                return frb(r, b) *  b; // incluir fator b do jacobiano
             };
             // integrar em b de 0 a 10 GeV^-1 usando 200 subdivisões
             double Ib = integrate_simpson(fb, 0.0, 10.0, 200);
@@ -443,7 +440,7 @@ double calculate_deltinha(double x, double Q2, const Meson& M, const std::string
 // ---------------- sigma(x)----------------
 // Esta função retorna a seção de choque em GeV^-2.
 double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
-               double sigma0_GeV2_val = 20.3, // GeV^-2
+               double sigma0 = 20.3, // mb
                int Nr = 600, int Nz = 200, 
                double rmin = 1e-4, double rmax = 10.0)
 {
@@ -461,7 +458,7 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
     double fator_beta = 1 + beta * beta;
 
 
-    return sigma0_GeV2_val * (amplitude * amplitude) / (16.0 * M_PI * B_val)
+    return sigma0 * (amplitude * amplitude) / (16.0 * M_PI * B_val)
            * termo_RG * termo_RG
            //* pow(1-x, 5.26)
            * fator_beta;
@@ -541,7 +538,7 @@ int main()
     double Q2 = 0;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
-    calculate_sigma(Q2, phi_GLC, phi_BG, "GBW");
+    calculate_sigma(Q2, Jpsi_GLC, Jpsi_BG, "bCGC");
 
     return 0;
 }
