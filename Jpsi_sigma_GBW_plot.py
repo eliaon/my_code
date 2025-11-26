@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 # --- arquivo com dados experimentais ---
-exp_data = pd.read_csv("sigma_gammap_jpsi.csv")
+exp_data = pd.read_csv("csv/sigma_gammap_jpsi.csv")
 
 # --- todas as séries experimentais pertencem a Q² = 0.1 ---
 Q2 = 0.0

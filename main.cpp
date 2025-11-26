@@ -237,12 +237,13 @@ double N_GBW(double r, double x,
     return 1.0 - exp(-arg);
 }
 // ---------------- N_bCGC ----------------
+// ---------------- N_bCGC ----------------
 double N_bCGC(double r, double x, double b,
               double x0 = 1.84e-6, double Q0sq = 1.0)
 {
     const double gamma_s = 0.46;
     const double N0 = 0.558;
-    const double B_bCGC = 4.0; // ou 7.5? ver literatura
+    const double B_bCGC = 4.0; // GeV^-2 (valor típico; ajustável)
 
     double Qs2 = Q0sq * pow(x0 / x, lambda) * exp(-b * b / (2.0 * B_bCGC));
     double r2Qs2 = r * r * Qs2;
@@ -250,8 +251,8 @@ double N_bCGC(double r, double x, double b,
     if (r2Qs2 <= 4.0) {
         return N0 * pow(r2Qs2 / 4.0, gamma_s);
     } else {
-        double log_term = log(r2Qs2 / 4.0 + M_E); // M_E = e ≈ 2.718...
-        return 1.0 - exp(-pow(r2Qs2 / 4.0, gamma_s) * log_term);
+        double log_arg = r2Qs2 / 4.0 + 2.718281828459045; // e ≈ 2.718...
+        return 1.0 - exp(-pow(r2Qs2 / 4.0, gamma_s) * log(log_arg));
     }
 }
 //----------------- plot n_bCGC -----------------------
@@ -354,38 +355,35 @@ double T(double b)
 
 // ---------------- Amplitude (Integral) ----------------
 double calculate_amplitude(double x, double Q2, std::string N_method, const Meson& M,
-                           int Nr = 600, int Nz = 2000,
+                           int Nr = 600, int Nz = 200,
                            double rmin = 1e-4, double rmax = 10.0)
 {
+    const double bmax = 10.0; // GeV^-1
+
     if (N_method == "bCGC") {
-        // integrando em r
-        auto frb = [&](double r, double b) {
-            double Ov = overlap_r(r, Q2, M, Nz);
-            double Nrval = N_bCGC(r, x, b);
-            return Ov * Nrval;
+        auto fr = [&](double r) {
+            auto fb = [&](double b) {
+                double Ov = overlap_r(r, Q2, M, Nz);
+                double Nrval = N_bCGC(r, x, b);
+                return Ov * Nrval * b; // <-- REMOVIDO 2π aqui
+            };
+            double Ib = integrate_simpson(fb, 0.0, bmax, 200);
+            return Ib * r; // <-- agora inclui r de d²r = 2π r dr
         };
 
-        auto fr = [&](double r) {
-            // integrar em b
-            auto fb = [&](double b) {
-                return frb(r, b) *  b; // incluir fator b do jacobiano
-            };
-            // integrar em b de 0 a 10 GeV^-1 usando 200 subdivisões
-            double Ib = integrate_simpson(fb, 0.0, 10.0, 200);
-            return Ib;
-        };
         double Ir = integrate_simpson(fr, rmin, rmax, Nr);
-        return 2.0 * M_PI * Ir; // A amplitude A é a integral em d^2r, que inclui 2*PI.
-    } else if(N_method == "GBW") {
-        // integrando em r
+        return 2.0 * M_PI * Ir; // <-- 2π total de d²r
+    }
+    else if (N_method == "GBW") {
         auto fr = [&](double r) {
             double Ov = overlap_r(r, Q2, M, Nz);
             double Nrval = N_GBW(r, x);
-            return Ov  * Nrval * r;
+            return Ov * Nrval * r; // r de d²r = 2π r dr
         };
         double Ir = integrate_simpson(fr, rmin, rmax, Nr);
-        return 2.0 * M_PI * Ir; // A amplitude A é a integral em d^2r, que inclui 2*PI.
-    } else {
+        return 2.0 * M_PI * Ir;
+    }
+    else {
         std::cerr << "Método N desconhecido: " << N_method << std::endl;
         return 0.0;
     }
