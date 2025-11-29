@@ -239,20 +239,23 @@ double N_GBW(double r, double x,
 // ---------------- N_bCGC ----------------
 // ---------------- N_bCGC ----------------
 double N_bCGC(double r, double x, double b,
-              double x0 = 1.84e-6, double Q0sq = 1.0)
+              double x0 = 1.84e-6, double lambda_bCGC = 0.119)
 {
-    const double gamma_s = 0.46;
-    const double N0 = 0.558;
-    const double B_bCGC = 4.0; // GeV^-2 (valor típico; ajustável)
+    double Qs2 = QS2_bCGC(x, b, x0, 1.0);
+    double N_0 = 0.558;
+    double c = N_0*gamma_s/(1-N_0);
+    double A = -c*c/log(1.0-N_0);
+    double B = 0.5*std::pow(1.0-N_0, -1.0/c);
+    double rQs = r * sqrt(Qs2);
+    double Y = log(1.0/x);
+    double K = 9.9;
 
-    double Qs2 = Q0sq * pow(x0 / x, lambda) * exp(-b * b / (2.0 * B_bCGC));
-    double r2Qs2 = r * r * Qs2;
-
-    if (r2Qs2 <= 4.0) {
-        return N0 * pow(r2Qs2 / 4.0, gamma_s);
+    if (rQs <= 2.0) {
+        double term1 = N_0*pow(rQs*rQs/4.0, 2.0*(gamma_s + log(2.0/rQs)/(K*lambda_bCGC*Y)));
+        return term1;
     } else {
-        double log_arg = r2Qs2 / 4.0 + 2.718281828459045; // e ≈ 2.718...
-        return 1.0 - exp(-pow(r2Qs2 / 4.0, gamma_s) * log(log_arg));
+        
+        return 1.0 - exp(-A * log(B * rQs * rQs)*log(B * rQs * rQs) );
     }
 }
 //----------------- plot n_bCGC -----------------------
