@@ -244,7 +244,7 @@ double N_bCGC(double r, double x, double b,
     double Qs2 = QS2_bCGC(x, b, x0, 1.0);
     double N_0 = 0.558;
     double c = N_0*gamma_s/(1-N_0);
-    double A = -c*c/log(1.0-N_0);
+    double A = -c*c/log(1.0-N_0);0
     double B = 0.5*std::pow(1.0-N_0, -1.0/c);
     double rQs = r * sqrt(Qs2);
     double Y = log(1.0/x);
