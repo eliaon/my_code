@@ -232,9 +232,10 @@ double QS2_GBW(double x, double x_0, double Q0sq=1.0)
 double N_GBW(double r, double x,
              double x0 = 3e-4)
 {
+    double sigma0 = 20.3* 0.003894; // gev^-2
     double Qs2 = QS2_GBW(x,  x0);
     double arg = (r * r) * Qs2 / 4.0;
-    return 1.0 - exp(-arg);
+    return sigma0*(1.0 - exp(-arg));
 }
 // ---------------- N_bCGC ----------------
 // ---------------- N_bCGC ----------------
@@ -280,7 +281,7 @@ void N_plot(std::string N_method)
             double Ib = integrate_simpson(fb, 0.0, 2.0, 200);
             return Ib;
         };
-        std::string filename = "N_bCGC_r.csv";
+        std::string filename = "csv/N_bCGC_r.csv";
         std::ofstream fout(filename);
         fout << "r,N_bCGC\n";
         const int Npoints = 1000;
@@ -315,7 +316,7 @@ void N_plot(std::string N_method)
             double Ib = integrate_simpson(fb, 0.0, 2.0, 200);
             return Ib;
         };
-        std::string filename = "N_gbw_r.csv";
+        std::string filename = "csv/N_gbw_r.csv";
         std::ofstream fout(filename);
         fout << "r,N_gbw\n";
         const int Npoints = 1000;
@@ -441,7 +442,6 @@ double calculate_deltinha(double x, double Q2, const Meson& M, const std::string
 // ---------------- sigma(x)----------------
 // Esta função retorna a seção de choque em GeV^-2.
 double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
-               double sigma0 = 20.3, // mb
                int Nr = 600, int Nz = 200, 
                double rmin = 1e-4, double rmax = 10.0)
 {
@@ -459,7 +459,7 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
     double fator_beta = 1 + beta * beta;
 
 
-    return sigma0 * (amplitude * amplitude) / (16.0 * M_PI * B_val)
+    return (amplitude * amplitude) / (16.0 * M_PI * B_val)
            * termo_RG * termo_RG
            //* pow(1-x, 5.26)
            * fator_beta;
@@ -468,7 +468,7 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
 
 void calculate_sigma(double Q2 , const Meson& M_GLC, const Meson& M_BG, std::string N_method) {
     std::ostringstream oss;
-    oss << M_GLC.meson << "_sigma_Q2=" << std::fixed << std::setprecision(1) << Q2 << ".csv";
+    oss <<"csv/"<< M_GLC.meson << "_sigma_Q2=" << std::fixed << std::setprecision(1) << Q2 << ".csv";
     std::string filename = oss.str();
 
 
@@ -536,7 +536,7 @@ int main()
     Meson phi_GLC("phi", "phi_GLC", 1.019, 0.14, qS, 4.75, 16.0, 0.0, 0.0);
     Meson phi_BG("phi", "phi_BG", 1.019, 0.14, qS, 0.919, 0.825, 11.2);
 
-    double Q2 = 2;
+    double Q2 = 0;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
     calculate_sigma(Q2, phi_GLC, phi_BG, "GBW");
