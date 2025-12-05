@@ -244,7 +244,7 @@ double N_bCGC(double r, double x, double b,
     double Qs2 = QS2_bCGC(x, b, x0, 1.0);
     double N_0 = 0.558;
     double c = N_0*gamma_s/(1-N_0);
-    double A = -c*c/log(1.0-N_0);0
+    double A = -c*c/log(1.0-N_0);
     double B = 0.5*std::pow(1.0-N_0, -1.0/c);
     double rQs = r * sqrt(Qs2);
     double Y = log(1.0/x);
@@ -536,10 +536,10 @@ int main()
     Meson phi_GLC("phi", "phi_GLC", 1.019, 0.14, qS, 4.75, 16.0, 0.0, 0.0);
     Meson phi_BG("phi", "phi_BG", 1.019, 0.14, qS, 0.919, 0.825, 11.2);
 
-    double Q2 = 0;
+    double Q2 = 2;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
-    calculate_sigma(Q2, Jpsi_GLC, Jpsi_BG, "bCGC");
+    calculate_sigma(Q2, phi_GLC, phi_BG, "GBW");
 
     return 0;
 }

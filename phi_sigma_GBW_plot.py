@@ -27,7 +27,7 @@ plt.figure(figsize=(8,6))
 
 # --- curvas teóricas para Q²=0.1 ---
 try:
-    filename = f"phi_sigma_Q2={Q2}.csv"
+    filename = f"csv/phi_sigma_Q2={Q2}.csv"
     data = pd.read_csv(filename)
 
     W = data["W"]
@@ -41,6 +41,9 @@ try:
              color="red", fontsize=9, va="center")
 except Exception as e:
     print(f"Aviso: não consegui carregar sigma_Q2={Q2}.csv ({e})")
+
+#plotar dado experimental de H1 para Q2=2
+plt.errorbar(70, 960.0, yerr=280.0, fmt="o", color="blue", ecolor="lightgray", capsize=3, label="H1 ponto do bruno")
 
 # --- ajustes de gráfico ---
 plt.yscale("log")
