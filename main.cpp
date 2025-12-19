@@ -447,17 +447,19 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
 {
     // A seção de choque é proporcional ao quadrado da amplitude.
     double amplitude = calculate_amplitude(x, Q2, N_method , M,  Nr, Nz, rmin, rmax);
-    
+    std::cout << "Amplitude calculada: " << amplitude << std::endl;
     double B_val = calc_B(x, Q2,  M); // Unidades de GeV^-2
-
+    std::cout << "B calculado: " << B_val << std::endl;
     double deltinha = calculate_deltinha(x, Q2, M, N_method, Nr, Nz, rmin, rmax);
-
+    //std::cout << "Deltinha calculado: " << deltinha << std::endl;
     double termo_RG = std::pow(2.0,2.0*deltinha +3.0) * tgamma(deltinha + 2.5) 
                         / (sqrt(M_PI) * tgamma(deltinha + 4.0));
-
+    //std::cout << "Termo Rg calculado: " << termo_RG << std::endl;
     double beta = tan(M_PI * deltinha / 2.0);
+    //std::cout << "Beta calculado: " << beta << std::endl;
     double fator_beta = 1 + beta * beta;
-
+    //std::cout << "Fator beta calculado: " << fator_beta << std::endl;
+    std::cout << "quadrado da amplitude: " << amplitude * amplitude << std::endl;
 
     return (amplitude * amplitude) / (16.0 * M_PI * B_val)
            * termo_RG * termo_RG
@@ -539,7 +541,12 @@ int main()
     double Q2 = 0;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
-    calculate_sigma(Q2, phi_GLC, phi_BG, "GBW");
+    //calculate_sigma(Q2, phi_GLC, phi_BG, "bCGC");
+    double x = 1e-3;
+    std::cout << "Calculando sigma para x=" << x << " ou W=" << sqrt((Jpsi_GLC.MV*Jpsi_BG.MV)/x) << " e Q2=" << Q2 << " GeV^2" << std::endl;
+    double sigma = sigma_x(x, Q2, Jpsi_BG, "GBW");
+    std::cout << "Sigma calculada: " << sigma << " GeV^-2" << std::endl;
+    std::cout << "Sigma calculada: " << sigma * GeV2_to_nb << " nb" << std::endl;
 
     return 0;
 }
