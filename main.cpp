@@ -17,6 +17,7 @@ const double Nc    = 3.0;           // número de cores
 const double lambda = 0.29;       // parâmetro do modelo GBW
 const double gamma_s = 0.46; // parâmetro do modelo bCGC
 const double CFAC = 5.07; // conversão fm para GeV^-1
+const double sigma0 = 20.3* 0.003894; // gev^-2
 
 // Conversão de unidades
 const double GeV2_to_nb = 3.89379e5; // 1 GeV^-2 = 3.89379×10^5 nb
@@ -232,12 +233,10 @@ double QS2_GBW(double x, double x_0, double Q0sq=1.0)
 double N_GBW(double r, double x,
              double x0 = 3e-4)
 {
-    double sigma0 = 20.3* 0.003894; // gev^-2
     double Qs2 = QS2_GBW(x,  x0);
     double arg = (r * r) * Qs2 / 4.0;
-    return sigma0*(1.0 - exp(-arg));
+    return (1.0 - exp(-arg));
 }
-// ---------------- N_bCGC ----------------
 // ---------------- N_bCGC ----------------
 double N_bCGC(double r, double x, double b,
               double x0 = 1.84e-6, double lambda_bCGC = 0.119)
@@ -369,7 +368,7 @@ double calculate_amplitude(double x, double Q2, std::string N_method, const Meso
             auto fb = [&](double b) {
                 double Ov = overlap_r(r, Q2, M, Nz);
                 double Nrval = N_bCGC(r, x, b);
-                return Ov * Nrval * b; // <-- REMOVIDO 2π aqui
+                return 2 * Ov * Nrval * b; // <-- REMOVIDO 2π aqui
             };
             double Ib = integrate_simpson(fb, 0.0, bmax, 200);
             return Ib * r; // <-- agora inclui r de d²r = 2π r dr
@@ -382,7 +381,7 @@ double calculate_amplitude(double x, double Q2, std::string N_method, const Meso
         auto fr = [&](double r) {
             double Ov = overlap_r(r, Q2, M, Nz);
             double Nrval = N_GBW(r, x);
-            return Ov * Nrval * r; // r de d²r = 2π r dr
+            return 2 * Ov * Nrval * r; // r de d²r = 2π r dr
         };
         double Ir = integrate_simpson(fr, rmin, rmax, Nr);
         return 2.0 * M_PI * Ir;
@@ -447,9 +446,9 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
 {
     // A seção de choque é proporcional ao quadrado da amplitude.
     double amplitude = calculate_amplitude(x, Q2, N_method , M,  Nr, Nz, rmin, rmax);
-    std::cout << "Amplitude calculada: " << amplitude << std::endl;
+    
     double B_val = calc_B(x, Q2,  M); // Unidades de GeV^-2
-    std::cout << "B calculado: " << B_val << std::endl;
+    
     double deltinha = calculate_deltinha(x, Q2, M, N_method, Nr, Nz, rmin, rmax);
     //std::cout << "Deltinha calculado: " << deltinha << std::endl;
     double termo_RG = std::pow(2.0,2.0*deltinha +3.0) * tgamma(deltinha + 2.5) 
@@ -459,9 +458,12 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
     //std::cout << "Beta calculado: " << beta << std::endl;
     double fator_beta = 1 + beta * beta;
     //std::cout << "Fator beta calculado: " << fator_beta << std::endl;
-    std::cout << "quadrado da amplitude: " << amplitude * amplitude << std::endl;
+    // DEBUG =---------------------------------
+    //std::cout << "B calculado: " << B_val << std::endl;
+    //std::cout << "Amplitude calculada: " << amplitude << std::endl;
+    //std::cout << "quadrado da amplitude: " << amplitude * amplitude << std::endl;
 
-    return (amplitude * amplitude) / (16.0 * M_PI * B_val)
+    return sigma0 * sigma0 * (amplitude * amplitude) / (16.0 * M_PI * B_val)
            * termo_RG * termo_RG
            //* pow(1-x, 5.26)
            * fator_beta;
@@ -541,12 +543,12 @@ int main()
     double Q2 = 0;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
-    //calculate_sigma(Q2, phi_GLC, phi_BG, "bCGC");
-    double x = 1e-3;
-    std::cout << "Calculando sigma para x=" << x << " ou W=" << sqrt((Jpsi_GLC.MV*Jpsi_BG.MV)/x) << " e Q2=" << Q2 << " GeV^2" << std::endl;
-    double sigma = sigma_x(x, Q2, Jpsi_BG, "GBW");
-    std::cout << "Sigma calculada: " << sigma << " GeV^-2" << std::endl;
-    std::cout << "Sigma calculada: " << sigma * GeV2_to_nb << " nb" << std::endl;
+    calculate_sigma(Q2, Jpsi_BG, Jpsi_GLC, "GBW");
+    //double x = 1e-3;
+    //std::cout << "Calculando sigma para x=" << x << " ou W=" << sqrt((Jpsi_GLC.MV*Jpsi_BG.MV)/x) << " e Q2=" << Q2 << " GeV^2" << std::endl;
+    //double sigma = sigma_x(x, Q2, Jpsi_BG, "GBW");
+    //std::cout << "Sigma calculada: " << sigma << " GeV^-2" << std::endl;
+    //std::cout << "Sigma calculada: " << sigma * GeV2_to_nb << " nb" << std::endl;
 
     return 0;
 }

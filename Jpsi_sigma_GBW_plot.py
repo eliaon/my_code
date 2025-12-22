@@ -29,7 +29,7 @@ for i, dataset in enumerate(unique_datasets):
 
 # --- curvas teóricas para Q²=0.1 ---
 
-    filename = f"Jpsi_sigma_Q2=0.0.csv"
+    filename = f"csv/Jpsi_sigma_Q2=0.0.csv"
     data = pd.read_csv(filename)
 
     W = data["W"]
