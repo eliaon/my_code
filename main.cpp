@@ -470,12 +470,12 @@ double sigma_x(double x, double Q2 , const Meson& M, std::string N_method,
     //std::cout << "B calculado: " << B_val << std::endl;
     //std::cout << "Amplitude calculada: " << amplitude << std::endl;
     //std::cout << "quadrado da amplitude: " << amplitude * amplitude << std::endl;
-
-    return sigma0*(amplitude * amplitude) / (16.0 * M_PI * B_val)
-           * termo_RG * termo_RG
-           * pow(1-x, 5.26)
-           * fator_beta
-           * (1 + tan(M_PI * deltinha / 2) * tan(M_PI * deltinha / 2));
+    
+    return sigma0*(amplitude * amplitude) / (16.0 * M_PI * B_val);
+           //* termo_RG * termo_RG
+           //* pow(1-x, 5.26);
+           //* fator_beta
+           //* (1 + tan(M_PI * deltinha / 2) * tan(M_PI * deltinha / 2));
 };
 
 void calculate_sigma(double Q2 , const Meson& M_GLC, const Meson& M_BG, std::string N_method) {
@@ -551,7 +551,8 @@ int main()
     double Q2 = 0;
     //N_plot("GBW");
     //plot_overlap(Jpsi_GLC, Jpsi_BG, "GBW");
-    calculate_sigma(Q2, Jpsi_BG, Jpsi_GLC, "GBW");
+    calculate_sigma(Q2, Jpsi_BG, Jpsi_GLC, "bCGC");
+    
 
     return 0;
 }

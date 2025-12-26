@@ -5,7 +5,7 @@ from datetime import datetime
 #exp_data = pd.read_csv("phi_gamap_paper_all.csv")
 
 # --- todas as séries experimentais pertencem a Q² = 0.1 ---
-Q2 = 0.0
+Q2 = 5.0
 
 # --- símbolos e cores diferentes para distinguir datasets experimentais ---
 markers = ["o", "s", "^", "v", "D", "P", "X"]
