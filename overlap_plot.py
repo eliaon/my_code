@@ -15,7 +15,7 @@ plt.plot(r, overlap_GLC, linestyle="--", color="black", linewidth=1.8, label="GL
 plt.plot(r, overlap_BG, linestyle="-", color="black", linewidth=1.2, label="BG")
 
 plt.xlabel(r"$r$ [fm]")
-plt.xlim(0.01, 1)
+plt.xlim(0.001, 1)
 plt.ylim(0, 0.025)
 plt.xscale("log")
 plt.ylabel(r"Overlap $r \Psi^*_V \Psi_{\gamma}$")

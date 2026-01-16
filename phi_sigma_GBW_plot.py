@@ -5,7 +5,7 @@ from datetime import datetime
 #exp_data = pd.read_csv("phi_gamap_paper_all.csv")
 
 # --- todas as séries experimentais pertencem a Q² = 0.1 ---
-Q2 = 5.0
+Q2 = 0
 
 # --- símbolos e cores diferentes para distinguir datasets experimentais ---
 markers = ["o", "s", "^", "v", "D", "P", "X"]
@@ -43,14 +43,16 @@ except Exception as e:
     print(f"Aviso: não consegui carregar sigma_Q2={Q2}.csv ({e})")
 
 #plotar dado experimental de H1 para Q2=2
-plt.errorbar(70, 960.0, yerr=280.0, fmt="o", color="blue", ecolor="lightgray", capsize=3, label="H1 ponto do bruno")
+plt.errorbar(70, 960.0, yerr=280.0, fmt="o", color="blue", ecolor="lightgray", capsize=3, label="H1")
 
 # --- ajustes de gráfico ---
 plt.yscale("log")
-plt.xlim(0, 150)
+plt.xscale("log")
+plt.xlim(1, 10000)
+plt.ylim(10, 5000)
 plt.xlabel(r"$W$ [GeV]")
 plt.ylabel(r"$\sigma$ [nb]")
-plt.title(r"$J/\psi$ produção exclusiva ($\gamma p \to \phi p$) — $Q^2 = 2$")
+plt.title(r"$\psi$ produção exclusiva ($\gamma p \to \phi p$) — $Q^2 = 0$")
 plt.grid(True, which="both", ls="--", alpha=0.6)
 
 # --- legenda sem duplicação ---
