@@ -5,7 +5,7 @@ from datetime import datetime
 #exp_data = pd.read_csv("phi_gamap_paper_all.csv")
 
 # --- todas as séries experimentais pertencem a Q² = 0.1 ---
-Q2 = 0
+Q2 = 2
 
 # --- símbolos e cores diferentes para distinguir datasets experimentais ---
 markers = ["o", "s", "^", "v", "D", "P", "X"]
@@ -52,7 +52,7 @@ plt.xlim(1, 10000)
 plt.ylim(10, 5000)
 plt.xlabel(r"$W$ [GeV]")
 plt.ylabel(r"$\sigma$ [nb]")
-plt.title(r"$\psi$ produção exclusiva ($\gamma p \to \phi p$) — $Q^2 = 0$")
+plt.title(f"$\phi$ produção exclusiva ($\gamma p \to \phi p$) — $Q^2 = ${Q2}")
 plt.grid(True, which="both", ls="--", alpha=0.6)
 
 # --- legenda sem duplicação ---
