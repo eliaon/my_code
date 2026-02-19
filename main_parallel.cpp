@@ -97,6 +97,24 @@ double derivative_richardson(const std::function<double(double)>& f,
     return (4.0*D2 - D1) / 3.0;
 }
 
+double derivative_poly5(
+    const std::function<double(double)>& f,
+    double x)
+{
+    double h = 1e-10;
+
+    double f1=f(x-2*h);
+    double f2=f(x-h);
+    double f3=f(x+h);
+    double f4=f(x+2*h);
+
+    return (-f4 + 8*f3 - 8*f2 + f1)/(12*h);
+}
+
+
+
+
+
 
 // Conversão de unidades
 const double GeV2_to_nb = 3.89379e5; // 1 GeV^-2 = 3.89379×10^5 nb
@@ -308,27 +326,45 @@ inline double psi_Vpsi_L(double z, double r, double Q2, const Meson& M)
 // ---------------- overlap integrado em z ----------------
 double overlap_r(double r, double Q2, const Meson& M, int Nz = 200) {
     auto fz = [r, Q2, &M](double z) {
-        return psi_Vpsi_T(z, r, Q2, M) + psi_Vpsi_L(z, r, Q2, M);
+        return psi_Vpsi_T(z, r, Q2, M); //+ psi_Vpsi_L(z, r, Q2, M);
     };
     return integrate_simpson( fz, 1e-6, 1.0 - 1e-6, Nz );
 }
 
 
-void plot_overlap(const Meson& M_GLC, const Meson& M_BG, std::string N_method, int Nz = 200)
+void plot_overlap(void)
 {
+    std::string meson_input;
+    std::cout << "Insira o meson (Jpsi, phi): ";
+    std::cin >> meson_input;
+
+    // normalização simples
+    if (meson_input == "jpsi") meson_input = "Jpsi";
+    if (meson_input == "Phi")  meson_input = "phi";
+
+    auto it = meson_models.find(meson_input);
+    if (it == meson_models.end()) {
+        std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
+        it = meson_models.find("Jpsi");
+    }
+
+    const Meson& M_GLC = it->second.M_GLC;
+    const Meson& M_BG  = it->second.M_BG;
+
+    int Nz = 200;
     std::string filename = M_GLC.meson + "_overlap_r.csv";
     std::ofstream fout(filename);
     fout << "r,overlap_GLC,overlap_BG\n";
     const int Npoints = 1000;
-    double rmin = 1e-4, rmax = 10.0;
+    double rmin = 1e-4, rmax = 20.0;
     double Q2 = 0.0;
 
     for (int i = 0; i < Npoints; ++i) {
         double frac = static_cast<double>(i) / (Npoints - 1);
         double r = rmin * pow(rmax / rmin, frac);
 
-        double overlap_glc = overlap_r(r, Q2, M_GLC, Nz);
-        double overlap_bg  = overlap_r(r, Q2, M_BG, Nz);
+        double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
+        double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
 
         fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
     }
@@ -337,49 +373,146 @@ void plot_overlap(const Meson& M_GLC, const Meson& M_BG, std::string N_method, i
 }
 
 // ------------ calculo do N -----------
-double QS2_GBW(double x)
+ 
+ double QS2_GBW( double x, double x_0 = 3e-4)
 {
-    const double x_0 = 3e-4;
     return pow(x_0 / x, lambda);
 }   
-
-double N_GBW(double r, double x)
+ 
+double QS_bCGC( double x, double b, double x0 = 1.84e-6)
 {
-    double Qs2 = QS2_GBW(x);
+    double B_CGC = 7.5; // GeV^-2
+    double Qs2 = std::pow(x0/x, lambda/2.0)*
+                std::pow(std::exp(-b*b/(2*B_CGC)), 1.0/(2.0*gamma_s));
+    return Qs2;
+}
+ 
+double N_GBW(double r,  double x, double x_0 = 3e-4)
+{
+    double Qs2 = QS2_GBW(x, x_0);
     double arg = (r * r) * Qs2 / 4.0;
-    return (1.0 - exp(-arg))*std::pow(1-x, 5.26);
+    return (1.0 - exp(-arg))*std::pow(1.0-x, 5.26);
+}
+ double N_IIM(double r,  double x,  double x0 =  1.84e-6)
+{
+    const double lambda_iim = 0.119;
+    const double gamma_s = 0.46;     // anomalous dimension
+    const double kappa = 9.9;
+    const double N_0 = 0.558;
+
+    double Qs  = std::pow(x0/x, lambda_iim/2.0);
+    double rQs = r * Qs;
+
+    rQs = std::max(rQs, 1e-12);      // proteção numérica
+
+    if (rQs < 2.0) {
+
+        double Lx = std::log(1.0/x);
+
+        double exp =
+            2.0 * (gamma_s +
+            std::log(2.0/rQs) /
+            (kappa * lambda_iim * Lx));
+
+        return N_0 * std::pow(rQs/2.0, exp)*std::pow(1.0-x, 5.26);
+
+    } else {
+
+        double a = -N_0*N_0*gamma_s*gamma_s /
+                   ((1-N_0)*(1-N_0)*std::log(1.0-N_0));
+
+        double b = 0.5 * std::pow(1.0-N_0,
+                   -(1.0-N_0)/(N_0*gamma_s));
+
+        double ln = std::log(b * rQs);
+
+        return 1.0 - std::exp(-a * ln * ln)*std::pow(1.0-x, 5.26);
+    }
 }
 
-void N_plot()
+double prof_bCGC(double r, double x, double b, double x0 = 1.84e-6)
 {
-    std::ofstream fout("csv/N_GBW.csv");
-    fout << "r²,N_GBW\n";
+    double Qs = QS_bCGC(x, b, x0);
+    const double lambda_iim = 0.119;
+    const double gamma_s = 0.46;     // anomalous dimension
+    const double kappa = 9.9;
+    const double N_0 = 0.558;
+
+    double rQs = r * Qs;
+
+    rQs = std::max(rQs, 1e-12);      // proteção numérica
+
+    if (rQs < 2.0) {
+
+        double Lx = std::log(1.0/x);
+
+        double expnt =
+            2.0 * (gamma_s +
+            std::log(2.0/rQs) /
+            (kappa * lambda_iim * Lx));
+
+        double N_b = N_0 * std::pow(rQs/2.0, expnt);
+        return N_b;
+
+    } else {
+
+        double a = -N_0*N_0*gamma_s*gamma_s /
+                   ((1-N_0)*(1-N_0)*std::log(1.0-N_0));
+
+        double b = 0.5 * std::pow(1.0-N_0,
+                   -(1.0-N_0)/(N_0*gamma_s));
+
+        double ln = std::log(b * rQs);
+
+        double N_b = 1.0 - std::exp(-a * ln * ln);
+        return N_b;
+    }
+}
+
+double N_bCGC(double r, double x, double x_0 = 1.84e-6)
+{
+    auto integrand = [&](double b) {
+        return b * prof_bCGC(r, x, b, x_0);
+    };
+    double bmax = 10.0; // Limite superior para a integração em b
+    return 4.0 * M_PI * integrate_simpson(integrand, 0.0, bmax, 200);
+}
+
+void dump_curve_N(const std::string& fname, double x)
+{
+    std::ofstream fout(fname);
     const int Npoints = 5000;
-    double rmin = 1e-4, rmax = 10.0;
-    double x = 1e-4;
 
-    for (int i = 0; i < Npoints; ++i) {
-        //double frac = static_cast<double>(i) / (Npoints - 1);
-        //double r = rmin * pow(rmax / rmin, frac);
+    fout << "r2,N_bCGC\n";
 
-        double r = rmin + (rmax/(Npoints -1))*(i-1);
-        double Nval = N_GBW(r, x);
+    double rmin=1e-4, rmax=10.0;
 
+    for(int i=0;i<Npoints;++i)
+    {
+        double frac = (double)i/(Npoints-1);
+        double r = rmin + frac*(rmax-rmin);
+
+        double Nval = N_bCGC(r,x);
         fout << r*r << "," << Nval << "\n";
     }
-
-    fout.close();
 }
 
-double sigma_dipolo(double r, double x)
+void N_plot(void)
+{
+    
+    dump_curve_N("csv/N_bCGC_x=1e-4.csv",1e-4);
+    dump_curve_N("csv/N_bCGC_x=1e-2.csv",1e-2);
+}
+ 
+double sigma_dipolo(double r,  double x)
 {
     double Nval = N_GBW(r, x);
     return sigma0 * Nval;
 }
 
 //----------- amplitude -----------
-
-double amplitude(double x, double Q2, const Meson& M,
+ 
+double amplitude( double x, double Q2, const Meson& M,
                  int Nr = 600, int Nz = 200,
                  double rmin = 1e-4, double rmax = 10.0)
 {
@@ -393,10 +526,10 @@ double amplitude(double x, double Q2, const Meson& M,
 }
 
 // Fatores de correção Rg e deltinha
-
-double lnA(double y, double Q2, const Meson& M)
+ 
+ double lnA( double y, double Q2, const Meson& M)
 {
-    double x = std::exp(-y);
+     double x = std::exp(-y);
     double amp = amplitude(x, Q2, M);
 
     if (amp <= 0) {
@@ -417,7 +550,7 @@ double calculate_lambda(double x, double Q2, const Meson& M)
         return lnA(y, Q2, M);
     };
 
-    double dlnA_dy = dfridr(f_lnA, y, h, err);
+    double dlnA_dy = derivative_poly5(f_lnA, y);
     return dlnA_dy;
 }
 
@@ -458,7 +591,7 @@ double sigma_x(double x, double Q2 , const Meson& M,
     // A seção de choque é proporcional ao quadrado da amplitude.
     double amp = amplitude(x, Q2, M, Nr, Nz, rmin, rmax);
     double B_val = B(x, Q2,  M); // Unidades de GeV^-2
-    double lambda_e = calculate_lambda(x, Q2, M);
+    double lambda_e = 0.19;//calculate_lambda(x, Q2, M);
     double Rg = calculate_RG(x, Q2, lambda_e, M);
     //double beta_val = beta(x, Q2, lambda_e, M);
 
@@ -517,23 +650,10 @@ double d_sigma_dy(double y, double sqrt_s, double Q2, const Meson& M)
 }
 
 
-void run_rapidez_plot(void){
-
-    double sqrt_s;
-    std::cout << "Insira o valor de sqrt(s) (GeV): ";
-    std::cin >> sqrt_s;
-
-    double Q2;
-    std::cout << "Insira o valor de Q2 (GeV^2): ";
-    std::cin >> Q2;
-
-    std::string meson_input;
-    std::cout << "Insira o meson (Jpsi, phi): ";
-    std::cin >> meson_input;
-
-    // normalização simples
-    if (meson_input == "jpsi") meson_input = "Jpsi";
-    if (meson_input == "Phi")  meson_input = "phi";
+void dump_curve_rap(const std::string& meson_input, double sqrt_s)
+{
+    
+    double Q2=0.0;
 
     auto it = meson_models.find(meson_input);
     if (it == meson_models.end()) {
@@ -544,8 +664,9 @@ void run_rapidez_plot(void){
     const Meson& M_GLC = it->second.M_GLC;
     const Meson& M_BG  = it->second.M_BG;
 
+    std::string sqrt_s_str = std::format("{:.3g}", sqrt_s);
     std::string Q2_str = std::format("{:.3g}", Q2);
-    std::string filename = "csv/" + M_GLC.meson + "_d_sigma_dy_Q2=" + Q2_str + ".csv";
+    std::string filename = "csv/" + M_GLC.meson + "_rapidez_" + sqrt_s_str + "GeV.csv";
     std::ofstream fout(filename);
     fout << "y,d_sigma_dy_GLC,d_sigma_dy_BG\n";
 
@@ -560,6 +681,29 @@ void run_rapidez_plot(void){
     }
     fout.close();
     std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+}
+
+void run_rapidez_plot(void){
+
+    double sqrt_s;
+    std::cout << "Insira o valor de sqrt(s) (GeV): ";
+    std::cin >> sqrt_s;
+
+
+    std::string Jpsi="Jpsi";
+    std::string phi = "phi";
+    using clock = std::chrono::steady_clock;
+    auto start = clock::now();
+    dump_curve_rap(Jpsi, sqrt_s);
+    auto end = clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Tempo de execução para Jpsi: " << duration << " ms" << std::endl;
+
+     start = clock::now();
+    dump_curve_rap(phi, sqrt_s);
+    end = clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Tempo de execução para phi: " << duration << " ms" << std::endl;
 }
 
 
@@ -694,12 +838,17 @@ void draw_wavefunctions(const Meson& M, int Nz = 200)
 }
 
 int main(){
-    omp_set_num_threads(6);// Ajuste conforme o número de núcleos disponíveis
+    int threads;
+    std::cout << "Insira o número de threads para OpenMP: ";
+    std::cin >> threads;
+    omp_set_num_threads(threads);// Ajuste conforme o número de núcleos disponíveis
     //draw_wavefunctions(Jpsi_BG);
     //print_B_values(Jpsi_GLC, 0.0);
     //N_plot();
     run_rapidez_plot();
     //run_sigma_plot();
     //debug_correc();
+    //plot_overlap();
+    //printf("Qs = %g\n", QS_bCGC(1e-4,0));
     return 0;
 }

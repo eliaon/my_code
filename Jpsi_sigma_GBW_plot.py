@@ -1,64 +1,108 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+import matplotlib as mpl
 
+mpl.rcParams.update({
+    "font.size": 18,          # fonte base
+    "axes.titlesize": 22,     # título
+    "axes.labelsize": 20,     # labels dos eixos
+    "legend.fontsize": 18,    # legenda
+    "xtick.labelsize": 16,    
+    "ytick.labelsize": 16,
+})
 
 # --- arquivo com dados experimentais ---
 exp_data = pd.read_csv("csv/sigma_gammap_jpsi.csv")
 
-# --- todas as séries experimentais pertencem a Q² = 0.1 ---
-Q2 = 0.0
-
-# --- símbolos e cores diferentes para distinguir datasets experimentais ---
-markers = ["o", "s", "^", "v", "D", "P", "X"]
-colors = ["black", "gray", "orange", "green", "blue", "purple", "red"]
+Q2 = 0
 
 plt.figure(figsize=(8,6))
 
-# --- plotar todos os datasets experimentais ---
+# --- mapa dataset -> experimento ---
+exp_map = {
+    0: "H1",
+    1: "H1",
+    2: "ALICE",
+    3: "LHCb"
+}
+
+# estilos por experimento
+exp_style = {
+    "H1":   dict(color="blue",   marker="o"),
+    "ALICE": dict(color="black",  marker="s"),
+    "LHCb": dict(color="purple", marker="^")
+}
+
+# --- plot experimental ---
 unique_datasets = sorted(exp_data["dataset"].unique())
-    
-for i, dataset in enumerate(unique_datasets):
+
+for dataset in unique_datasets:
+
     subset = exp_data[exp_data["dataset"] == dataset]
 
-    plt.errorbar(subset["W"], subset["Sigma"], yerr=subset["Error"],
-                 fmt=markers[i % len(markers)],
-                 color=colors[i % len(colors)],
-                 ecolor="lightgray", capsize=3,
-                 label=f"Exp. conjunto {dataset}")
+    exp_name = exp_map.get(dataset, f"set {dataset}")
+    style = exp_style.get(exp_name, dict(color="gray", marker="x"))
 
-# --- curvas teóricas para Q²=0.1 ---
+    plt.errorbar(
+        subset["W"],
+        subset["Sigma"],
+        yerr=subset["Error"],
+        fmt=style["marker"],
+        color=style["color"],
+        ecolor=style["color"],
+        capsize=3,
+        label=exp_name
+    )
 
-    filename = f"csv/Jpsi_sigma_Q2=0.0.csv"
+# --- curvas teóricas ---
+try:
+    filename = "csv/Jpsi_sigma_Q2=0.csv"
     data = pd.read_csv(filename)
+
+    data = data.sort_values("W")
 
     W = data["W"]
     sigma_GLC = data["sigma_GLC"]
     sigma_BG = data["sigma_BG"]
 
-    plt.plot(W, sigma_GLC, linestyle="-", color="red", linewidth=1.8, label=f"GLC Q²={Q2}")
-    plt.plot(W, sigma_BG, linestyle="--", color="red", linewidth=1.2, label=f"BG Q²={Q2}")
+    plt.plot(W, sigma_GLC, "-", color="red", lw=1.8, label=f"GLC")
+    plt.plot(W, sigma_BG, "--", color="red", lw=1.2, label=f"BG")
 
-    plt.text(W.iloc[-1]*1.05, sigma_GLC.iloc[-1], f"Q²={Q2}", 
-             color="red", fontsize=9, va="center")
+    # anotação segura (não quebra layout)
+    plt.text(
+        0.72, 0.88,
+        f"$Q^2={Q2}$",
+        transform=plt.gca().transAxes,
+        color="red",
+        fontsize=9
+    )
+
+except Exception as e:
+    print("Falha ao carregar curva teórica:", e)
 
 
 # --- ajustes de gráfico ---
 plt.yscale("log")
-plt.xlim(10, 350)
+plt.xscale("log")
+plt.xlim(300, 10000)
+plt.ylim(1e1, 2e3)
+
 plt.xlabel(r"$W$ [GeV]")
 plt.ylabel(r"$\sigma$ [nb]")
-plt.title(r"$J/\psi$ produção exclusiva ($\gamma p \to J/\psi p$) — $Q^2 =0.0$")
+plt.title(r"$J/\psi$ produção exclusiva ($\gamma p \to J/\psi p$)")
+
 plt.grid(True, which="both", ls="--", alpha=0.6)
 
-# --- legenda sem duplicação ---
+# legenda sem duplicação
 handles, labels = plt.gca().get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 plt.legend(by_label.values(), by_label.keys(), loc="lower right", fontsize=8)
 
 plt.tight_layout()
-# Salva com timestamp no nome
+
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-plt.savefig(f"plots/sigma_Jpsi_Q2=0.0_{timestamp}.png", dpi=300)
+plt.savefig(f"plots/sigma_Jpsi_Q2=0_{timestamp}.png", dpi=300)
 
 plt.show()
+
