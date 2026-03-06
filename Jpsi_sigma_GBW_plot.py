@@ -85,7 +85,7 @@ except Exception as e:
 # --- ajustes de gráfico ---
 plt.yscale("log")
 plt.xscale("log")
-plt.xlim(300, 10000)
+plt.xlim(20, 10000)
 plt.ylim(1e1, 2e3)
 
 plt.xlabel(r"$W$ [GeV]")

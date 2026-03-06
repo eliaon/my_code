@@ -69,3 +69,4 @@ double sgs0(double A, double B, double EPS, const std::function<double(double)>&
     }
     return S;
 }
+
