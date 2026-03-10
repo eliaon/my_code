@@ -1,4 +1,6 @@
 #pragma once
+#ifndef PLOT_H
+#define PLOT_H
 
 #include <string>
 
@@ -12,4 +14,9 @@ void plot_overlap();
 
 void plot_rapidity();
 
-void plot_sigma();
+void plot_sigma(std::string meson);
+
+void plot_sigma_phi();
+void plot_sigma_Jpsi();
+
+#endif // PLOT_H

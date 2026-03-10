@@ -347,45 +347,45 @@ double overlap_r(double r, double Q2, const Meson& M, int Nz = 200) {
 }
 
 
-void plot_overlap(void)
-{
-    std::string meson_input;
-    std::cout << "Insira o meson (Jpsi, phi): ";
-    std::cin >> meson_input;
+//void plot_overlap(void)
+//{
+  //  std::string meson_input;
+    //std::cout << "Insira o meson (Jpsi, phi): ";
+    //std::cin >> meson_input;
 
     // normalização simples
-    if (meson_input == "jpsi") meson_input = "Jpsi";
-    if (meson_input == "Phi")  meson_input = "phi";
+   // if (meson_input == "jpsi") meson_input = "Jpsi";
+   // if (meson_input == "Phi")  meson_input = "phi";
 
-    auto it = meson_models.find(meson_input);
-    if (it == meson_models.end()) {
-        std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
-        it = meson_models.find("Jpsi");
-    }
+    //auto it = meson_models.find(meson_input);
+    //if (it == meson_models.end()) {
+      //  std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
+      //  it = meson_models.find("Jpsi");
+    //}
 
-    const Meson& M_GLC = it->second.M_GLC;
-    const Meson& M_BG  = it->second.M_BG;
+    //const Meson& M_GLC = it->second.M_GLC;
+    //const Meson& M_BG  = it->second.M_BG;
 
-    int Nz = 200;
-    std::string filename = M_GLC.meson + "_overlap_r.csv";
-    std::ofstream fout(filename);
-    fout << "r,overlap_GLC,overlap_BG\n";
-    const int Npoints = 1000;
-    double rmin = 1e-4, rmax = 20.0;
-    double Q2 = 0.0;
+    //int Nz = 200;
+    //std::string filename = M_GLC.meson + "_overlap_r.csv";
+    //std::ofstream fout(filename);
+    //fout << "r,overlap_GLC,overlap_BG\n";
+    //const int Npoints = 1000;
+    //double rmin = 1e-4, rmax = 20.0;
+    //double Q2 = 0.0;
 
-    for (int i = 0; i < Npoints; ++i) {
-        double frac = static_cast<double>(i) / (Npoints - 1);
-        double r = rmin * pow(rmax / rmin, frac);
+    //for (int i = 0; i < Npoints; ++i) {
+    //    double frac = static_cast<double>(i) / (Npoints - 1);
+    //    double r = rmin * pow(rmax / rmin, frac);
 
-        double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
-        double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
+    //    double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
+    //    double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
 
-        fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
-    }
-    fout.close();
-    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
-}
+    //    fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
+    //}
+    //fout.close();
+    //std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+//}
 
 // ------------ calculo do N -----------
  
@@ -871,7 +871,7 @@ void run_sigma_plot()
     std::ofstream fout(filename);
     fout << "W,sigma_GLC,sigma_BG\n";
 
-    const int Nw = 60;
+    const int Nw = 20;
     double Wmin = 25.0;
     double Wmax = 3e3;
 
@@ -905,6 +905,8 @@ void run_sigma_plot()
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "Tempo de execução: " << duration << " ms" << std::endl;
     std::cout << "Arquivo '" << filename << "' gerado em " << duration << " ms" << std::endl;
+
+    plot_sigma(M_GLC.meson);
 }
 
 void perfil(const Meson& meson){
@@ -985,11 +987,10 @@ int main(){
     //N_plot();
     //plot_sigmaqq();
     //run_rapidez_plot();
-    //run_sigma_plot();
+    run_sigma_plot();
     //debug_correc();
     //plot_overlap();
     //printf("Qs = %g\n", QS_bCGC(1e-4,0));
     //dsigma_dump();
-    plot_dsigma_dt();
     return 0;
 }

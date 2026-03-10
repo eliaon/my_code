@@ -618,10 +618,8 @@ void plot_sigma_phi()
     plt::show();
 }
 
-void plot_sigma()
+void plot_sigma(std::string meson)
 {
-    std::string meson = get_meson();
-
     if(meson == "Jpsi")
         plot_sigma_Jpsi();
     else if(meson == "phi")
