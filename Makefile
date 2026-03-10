@@ -1,12 +1,12 @@
 CXX = g++
 CXXFLAGS = -O3 -std=c++20 -fopenmp
 
-
 SRCS = dipoleamplitude.cpp \
        dglap_cpp/AlphaStrong.cpp \
        dglap_cpp/EvolutionLO_nocoupling.cpp \
        main_parallel.cpp \
-       integration.cpp
+       integration.cpp \
+       plot.cpp
 
 TARGET = main
 

@@ -17,6 +17,7 @@
 #include "dglap_cpp/EvolutionLO_nocoupling.h"
 #include <chrono>
 #include <omp.h>
+#include "plot.h"
 
 using namespace MZ_ipsat;
 
@@ -984,10 +985,11 @@ int main(){
     //N_plot();
     //plot_sigmaqq();
     //run_rapidez_plot();
-    run_sigma_plot();
+    //run_sigma_plot();
     //debug_correc();
     //plot_overlap();
     //printf("Qs = %g\n", QS_bCGC(1e-4,0));
     //dsigma_dump();
+    plot_dsigma_dt();
     return 0;
 }
