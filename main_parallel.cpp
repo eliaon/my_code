@@ -28,9 +28,9 @@ using namespace MZ_ipsat;
 
 const double alfem = 1.0 / 137.0;   // constante de estrutura fina
 const double Nc    = 3.0;           // número de cores
-const double lambda = 0.29;       // parâmetro do modelo GBW
-const double gamma_s = 0.46; // parâmetro do modelo bCGC
-const double CFAC = 5.07; // conversão fm para GeV^-1
+const double lambda = 0.29;         // parâmetro do modelo GBW
+const double gamma_s = 0.46;        // parâmetro do modelo bCGC
+const double CFAC = 5.07;           // conversão fm para GeV^-1
 const double sigma0 = 23.0/ 0.3894; // GBW old gev^-2
 //const double sigma0 = 27.43 / 0.3894; // GBW new gev^-2
 
@@ -124,12 +124,12 @@ double derivative_poly5(
     return (-f4 + 8*f3 - 8*f2 + f1)/(12*h);
 }
 
-const double mc = 1.3528;
-const double ms = 0.03;
-const double massa_psi = 3.097;
-const double massa_phi = 1.019;
-const double R2 = 1.5070*1.5070; // GeV^-2, usado no BG
-
+const double mc = 1.3528;            // massa do charm em GeV, usada no BG
+const double ms = 0.03;              // massa do strange em GeV, usada no BG
+const double massa_psi = 3.097;      // massa do J/psi em GeV
+const double massa_phi = 1.019;      // massa do phi em GeV
+const double R2_psi = 1.5070*1.5070;     // parâmetro R² do J/psi no modelo BG (GeV^-2)
+const double R2_phi = 3.3922*3.3922;     // parâmetro R² do phi no modelo BG (GeV^-2)
 
 // Conversão de unidades
 const double GeV2_to_nb = 3.89379e5; // 1 GeV^-2 = 3.89379×10^5 nb
@@ -171,11 +171,11 @@ public:
 
 // Definição dos mésons
 // Meson(meson, nome, MV, mf, ef, NT, R2T, NL, R2L)  Gaus-LC
-// Meson(meson, nome, MV, mf, ef, NT, NL, R2)        Boosted Gaussian
 Meson Jpsi_GLC("Jpsi", "Jpsi_GLC", massa_psi, mc, qJ, 1.23, 6.5, 0.83, 6.5);
-Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.5890, 0.5860, R2);
 Meson phi_GLC("phi", "phi_GLC", massa_phi, ms, qS, 4.75, 16.0, 1.0, 16.0);
-Meson phi_BG("phi", "phi_BG", massa_phi, ms, qS, 0.919, 0.825, 11.2);
+// Meson(meson, nome, MV, mf, ef, NT, NL, R2)        Boosted Gaussian
+Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.5890, 0.5860, R2_psi);
+Meson phi_BG("phi", "phi_BG", massa_phi, ms, qS, 0.9950, 0.8400, R2_phi);
 
 
 // Struct dos mesons pra selecionar
@@ -198,7 +198,8 @@ inline double B(double x, double Q2, const Meson& M) {
         return B1;
     }
         else if (M.meson == "phi"){
-            double B2 = 0.60 * (14.0 / pow((Q2 + M.MV*M.MV), 0.26) + 1.0);
+            double B2 = 0.55 * (14.0 / pow((Q2 + M.MV*M.MV), 0.2) + 1.0);
+            std::cout << "B = " << B2 << "para x = " << x << "%\n";
             return B2;}
             else {
                 std::cerr << "Méson desconhecido para cálculo de B: " << M.meson << std::endl;
@@ -347,45 +348,45 @@ double overlap_r(double r, double Q2, const Meson& M, int Nz = 200) {
 }
 
 
-//void plot_overlap(void)
-//{
-  //  std::string meson_input;
-    //std::cout << "Insira o meson (Jpsi, phi): ";
-    //std::cin >> meson_input;
+void overlap_csv(void)
+{
+    std::string meson_input;
+    std::cout << "Insira o meson (Jpsi, phi): ";
+    std::cin >> meson_input;
 
     // normalização simples
-   // if (meson_input == "jpsi") meson_input = "Jpsi";
-   // if (meson_input == "Phi")  meson_input = "phi";
+    if (meson_input == "jpsi") meson_input = "Jpsi";
+    if (meson_input == "Phi")  meson_input = "phi";
 
-    //auto it = meson_models.find(meson_input);
-    //if (it == meson_models.end()) {
-      //  std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
-      //  it = meson_models.find("Jpsi");
-    //}
+    auto it = meson_models.find(meson_input);
+    if (it == meson_models.end()) {
+        std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
+        it = meson_models.find("Jpsi");
+    }
 
-    //const Meson& M_GLC = it->second.M_GLC;
-    //const Meson& M_BG  = it->second.M_BG;
+    const Meson& M_GLC = it->second.M_GLC;
+    const Meson& M_BG  = it->second.M_BG;
 
-    //int Nz = 200;
-    //std::string filename = M_GLC.meson + "_overlap_r.csv";
-    //std::ofstream fout(filename);
-    //fout << "r,overlap_GLC,overlap_BG\n";
-    //const int Npoints = 1000;
-    //double rmin = 1e-4, rmax = 20.0;
-    //double Q2 = 0.0;
+    int Nz = 200;
+    std::string filename = M_GLC.meson + "_overlap_r.csv";
+    std::ofstream fout(filename);
+    fout << "r,overlap_GLC,overlap_BG\n";
+    const int Npoints = 1000;
+    double rmin = 1e-4, rmax = 20.0;
+    double Q2 = 0.0;
 
-    //for (int i = 0; i < Npoints; ++i) {
-    //    double frac = static_cast<double>(i) / (Npoints - 1);
-    //    double r = rmin * pow(rmax / rmin, frac);
+    for (int i = 0; i < Npoints; ++i) {
+        double frac = static_cast<double>(i) / (Npoints - 1);
+        double r = rmin * pow(rmax / rmin, frac);
 
-    //    double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
-    //    double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
+        double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
+        double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
 
-    //    fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
-    //}
-    //fout.close();
-    //std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
-//}
+        fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
+    }
+    fout.close();
+    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+}
 
 // ------------ calculo do N -----------
  
@@ -533,7 +534,7 @@ double sigma_dipolo_ipsat(double r, double x, double Delta, DipoleAmplitude& dip
     return 2 * Nval;
 }
 
-void plot_sigmaqq(void)
+void csv_sigmaqq(void)
 {
     for (double x : {1e-4, 1e-2})
     {
@@ -595,6 +596,8 @@ double amplitude( double x, double Delta, double Q2, const Meson& M,
     return std::log(amp);
 }
 
+// -------------- lamnda_e --------------
+
 double calculate_lambda(double x, double Q2, const Meson& M)
 {
     const double h = 1e-4;
@@ -609,11 +612,12 @@ double calculate_lambda(double x, double Q2, const Meson& M)
         return lnA(y, Q2, M);
     };
 
-    double dlnA_dy = derivative_poly5(f_lnA, y);
+    double dlnA_dy = dfridr(f_lnA, y, h, err);
     return dlnA_dy;   
     }
 }
 
+// ----------------- fator de correção Rg skeweness ----------------
 
 double calculate_RG(double x, double Q2, double lambda_e, const Meson& M)
 {
@@ -625,7 +629,7 @@ double beta(double x, double Q2, double lambda_e, const Meson& M){
     return std::tan(M_PI * lambda_e / 2.0);
 }
 
-
+// ----------------- função pra printar os valores de lambda_e e Rg ----------------
 void debug_correc(void)
 {
     double x = 1e-4;
@@ -641,6 +645,8 @@ void debug_correc(void)
     }
 }
 
+// ----------------- conversão W <-> x ----------------
+
 double x_to_W(double x, const Meson& M) {
     return M.MV / std::sqrt(x);
 }
@@ -649,7 +655,7 @@ double W_to_x(double W, const Meson& M) {
     return (M.MV * M.MV) / (W * W);
 }
 // ---------------- cálculo da seção de choque ----------------
-
+// ---------------- primeiro em ipsat, depois com os fatores de correção ----------------
 double dsigma_dt(double x, double Q2, const Meson& M, double t,
                  int Nr = 600, int Nz = 200, 
                  double rmin = 1e-4, double rmax = 10.0)
@@ -661,20 +667,23 @@ double dsigma_dt(double x, double Q2, const Meson& M, double t,
     double beta_val = beta(x, Q2, lambda_e, M);
     return ((amp * amp) / (16.0 * M_PI )) * Rg * Rg * (1.0 + beta_val * beta_val);
 }
-
+// ----------------- seção de choque total sigma(x) a partir de dsigma/dt em t=0 e B -----------------
+// ----------------- mas para usar a integração em t, basta descomentar o código e comentar a linha de baixo -----------------    
 double sigma_ipsat(double x, double Q2, const Meson& M,
                  int Nr = 600, int Nz = 200, 
                  double rmin = 1e-4, double rmax = 10.0)
 {
-    double N_t = 100;
-    auto ft = [&](double t) {
-        return dsigma_dt(x, Q2, M, t, Nr, Nz, rmin, rmax);
-    };
-    double sigma = integrate_simpson(ft, 0.0, 2.5, N_t);
+    double B_val = B(x, Q2, M);
+    double sigma = dsigma_dt(x, Q2, M, 0)/(16 * M_PI * B_val);
+    //double N_t = 100;
+    //auto ft = [&](double t) {
+    //    return dsigma_dt(x, Q2, M, t, Nr, Nz, rmin, rmax);
+    //};
+    //double sigma = integrate_simpson(ft, 0.0, 2.5, N_t);
     return sigma;
 }
 
-
+// ----------------- função escolhe meson ----------
 Meson input_meson()
 {
     std::string meson_input;
@@ -693,8 +702,8 @@ Meson input_meson()
 
     return it->second.M_GLC; // Retorna o modelo GLC por padrão
 }
-
-void dsigma_plot(double W, const Meson& M_GLC)
+// ----------------- função para gerar csv da seção de choque dsigma/dt para um W específico ---------- 
+void dsigma_dt_csv(double W, const Meson& M_GLC)
 {
     double x = W_to_x(W, M_GLC);
 
@@ -723,7 +732,7 @@ void dsigma_plot(double W, const Meson& M_GLC)
     fout.close();
     std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
 }
-
+// ----------------- função para gerar os csvs de dsigma/dt para os W escolhidos ---------- 
 void dsigma_dump(void)
 {
     const Meson M_GLC = input_meson(); //importa o glc do meson escolhido
@@ -733,7 +742,7 @@ void dsigma_dump(void)
     }
   
 }
-
+// ----------------- função de calcular a seção de choque total sigma(x) -----------------
 double sigma_x(double x, double Q2 , const Meson& M,
                int Nr = 600, int Nz = 200, 
                double rmin = 1e-4, double rmax = 10.0)
@@ -833,7 +842,7 @@ void dump_curve_rap(const std::string& meson_input, double sqrt_s)
     std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
 }
 
-void run_rapidez_plot(void){
+void run_rapidez_csv(void){
 
     double sqrt_s;
     std::cout << "Insira o valor de sqrt(s) (GeV): ";
@@ -857,7 +866,7 @@ void run_rapidez_plot(void){
 }
 
 
-void run_sigma_plot()
+void run_sigma_csv()
 {
     double Q2;
     std::cout << "Insira o valor de Q2 (GeV^2): ";
@@ -871,7 +880,7 @@ void run_sigma_plot()
     std::ofstream fout(filename);
     fout << "W,sigma_GLC,sigma_BG\n";
 
-    const int Nw = 20;
+    const int Nw = 10;
     double Wmin = 25.0;
     double Wmax = 3e3;
 
@@ -987,8 +996,8 @@ int main(){
     //N_plot();
     //plot_sigmaqq();
     //run_rapidez_plot();
-    run_sigma_plot();
-    //debug_correc();
+    run_sigma_csv();
+    //plot_sigma(std::string("phi"));    //debug_correc();
     //plot_overlap();
     //printf("Qs = %g\n", QS_bCGC(1e-4,0));
     //dsigma_dump();

@@ -587,7 +587,7 @@ void plot_sigma_phi()
         {{"color","blue"},{"label","H1"}});
 
     plt::xlim(30,1000);
-    plt::ylim(10,5000);
+    plt::ylim(10,10000);
 
     plt::xlabel("$W$ [GeV]");
     plt::ylabel("$\\sigma$ [nb]");
