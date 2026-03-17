@@ -6,7 +6,7 @@
 
 std::string get_meson();
 
-void plot_dsigma_dt();
+void plot_dsigma_dt(std::string meson);
 
 void plot_N_models();
 

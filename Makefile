@@ -14,7 +14,9 @@ SRCS = dipoleamplitude.cpp \
        dglap_cpp/EvolutionLO_nocoupling.cpp \
        main_parallel.cpp \
        integration.cpp \
-       plot.cpp
+       plot.cpp \
+       utils.cpp \
+       ctes.cpp
 
 TARGET = main
 

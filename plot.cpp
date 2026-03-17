@@ -116,20 +116,69 @@ void dsigma_dt_curve(const std::string& W)
     }
 }
 
+
+// ------------- PLOTA DADOS EXPERIMENTAIS PARA dσ/dt DE FOTOPRODUÇÃO DE φ
+
+void plot_dsigma_exp_data_phi()
+{
+    std::ifstream file("csv/expdata/HEPData-dsigdt_gammap_phi.csv");
+
+    std::vector<double> t;
+    std::vector<double> dsdt;
+    std::vector<double> err;
+
+    std::string line;
+
+    while(std::getline(file, line))
+    {
+        // ignorar comentários HEPData
+        if(line.empty() || line[0] == '#')
+            continue;
+
+        // ignorar header textual
+        if(!std::isdigit(line[0]))
+            continue;
+
+        std::stringstream ss(line);
+        std::string value;
+
+        std::vector<double> row;
+
+        while(std::getline(ss, value, ','))
+            row.push_back(std::stod(value));
+
+        if(row.size() < 5)
+            continue;
+
+        double t_val = row[0];
+        double sigma = row[3] * 1000.0;   // µb → nb
+        double error = std::abs(row[4]) * 1000.0;
+
+        t.push_back(t_val);
+        dsdt.push_back(sigma);
+        err.push_back(error);
+    }
+
+    plt::errorbar(t, dsdt, err,
+    {{"fmt","o"},
+     {"color","black"},
+     {"label","HERA (W≈70 GeV)"}});
+}
+
 // ------------- PLOTAR AS CURVAS dσ/dt PARA TODOS OS W ESCOLHIDOS
 
-void plot_dsigma_dt()
+void plot_dsigma_dt(std::string meson)
 {
-    //plt::rcparams({
-    //{"text.usetex", "true"},
-   // {"font.family", "serif"}
-    //});
-    std::vector<std::string> w_values = {"75","100"};
+    std::vector<std::string> w_values = {"70"};
 
     plt::figure_size(700,500);
 
     for(const auto& W : w_values)
         dsigma_dt_curve(W);
+
+    // plota dados experimentais apenas para o méson phi
+    if(meson == "phi")
+        plot_dsigma_exp_data_phi();
 
     plt::xlim(0.0, 2.5);
     plt::ylim(1e-3, 1e4);
@@ -140,14 +189,14 @@ void plot_dsigma_dt()
     "plt.yscale('log')\n"
     );
 
-    
     plt::xlabel("$|t| (GeV^2)$");
     plt::ylabel("$d\\sigma/dt$ (nb)");
 
+    
     plt::grid(true);
     plt::legend();
 
-    plt::save("plots/dsigma_dt/dsigma_dt_" + timestamp() + ".png");
+    plt::save("plots/dsigma_dt/"+ meson +"dsigma_dt_" + timestamp() + ".png");
     plt::show();
 }
 

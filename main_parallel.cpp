@@ -18,177 +18,31 @@
 #include <chrono>
 #include <omp.h>
 #include "plot.h"
+#include "utils.h"
+#include "ctes.h"
 
 using namespace MZ_ipsat;
 
-// ---------------- Constantes globais ----------------
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
-const double alfem = 1.0 / 137.0;   // constante de estrutura fina
-const double Nc    = 3.0;           // número de cores
-const double lambda = 0.29;         // parâmetro do modelo GBW
-const double gamma_s = 0.46;        // parâmetro do modelo bCGC
-const double CFAC = 5.07;           // conversão fm para GeV^-1
-const double sigma0 = 23.0/ 0.3894; // GBW old gev^-2
-//const double sigma0 = 27.43 / 0.3894; // GBW new gev^-2
+// ---------------- Classe de parâmetros GBW --------------
+class parametros_GBW {
+    public:
+        double sigma0; // GeV^-2
+        double x0;
+        double lambda;
 
- // Cargas dos quarks
-double qJ = 2.0/3.0;
-double qS = 1.0/3.0;
+        parametros_GBW(double sigma0_, double x0_, double lambda_)
+            : sigma0(sigma0_), x0(x0_), lambda(lambda_) {}
+};
+
+parametros_GBW gbw_kowalski(23/mb_to_gev, 3e-4, 0.29);
 
 
-std::string doubleParaString(double valor, int casas = 2) {
-    std::ostringstream stream;
-    // fixed: garante o número de casas após o ponto
-    // setprecision(n): define o número de casas decimais
-    stream << std::fixed << std::setprecision(casas) << valor;
-    return stream.str();
-}
-
-// Derivada por extrapolação de Richardson
-double dfridr(
-    const std::function<double(double)>& func,
-    double x,
-    double h,
-    double& err
-) {
-    constexpr int NTAB = 10;
-    constexpr double CON  = 1.4;
-    constexpr double CON2 = CON * CON;
-    constexpr double BIG  = 1.0e30;
-    constexpr double SAFE = 2.0;
-
-    if (h == 0.0) {
-        throw std::runtime_error("h must be nonzero in dfridr");
-    }
-
-    double a[NTAB][NTAB];
-
-    double hh = h;
-    a[0][0] = (func(x + hh) - func(x - hh)) / (2.0 * hh);
-
-    err = BIG;
-    double dfridr_val = a[0][0];
-
-    for (int i = 1; i < NTAB; ++i) {
-        hh /= CON;
-        a[0][i] = (func(x + hh) - func(x - hh)) / (2.0 * hh);
-
-        double fac = CON2;
-
-        for (int j = 1; j <= i; ++j) {
-            a[j][i] = (a[j - 1][i] * fac - a[j - 1][i - 1]) / (fac - 1.0);
-            fac *= CON2;
-
-            double errt = std::max(
-                std::abs(a[j][i] - a[j - 1][i]),
-                std::abs(a[j][i] - a[j - 1][i - 1])
-            );
-
-            if (errt <= err) {
-                err = errt;
-                dfridr_val = a[j][i];
-            }
-        }
-
-        if (std::abs(a[i][i] - a[i - 1][i - 1]) >= SAFE * err) {
-            return dfridr_val;
-        }
-    }
-
-    return dfridr_val;
-}
-double derivative_richardson(const std::function<double(double)>& f,
-                             double x,
-                             double h = 1e-4)
-{
-    double D1 = (f(x + h) - f(x - h)) / (2.0*h);
-    double D2 = (f(x + h/2) - f(x - h/2)) / h;
-
-    return (4.0*D2 - D1) / 3.0;
-}
-
-double derivative_poly5(
-    const std::function<double(double)>& f,
-    double x)
-{
-    double h = 1e-10;
-
-    double f1=f(x-2*h);
-    double f2=f(x-h);
-    double f3=f(x+h);
-    double f4=f(x+2*h);
-
-    return (-f4 + 8*f3 - 8*f2 + f1)/(12*h);
-}
-
-const double mc = 1.3528;            // massa do charm em GeV, usada no BG
-const double ms = 0.03;              // massa do strange em GeV, usada no BG
-const double massa_psi = 3.097;      // massa do J/psi em GeV
-const double massa_phi = 1.019;      // massa do phi em GeV
-const double R2_psi = 1.5070*1.5070;     // parâmetro R² do J/psi no modelo BG (GeV^-2)
-const double R2_phi = 3.3922*3.3922;     // parâmetro R² do phi no modelo BG (GeV^-2)
-
-// Conversão de unidades
-const double GeV2_to_nb = 3.89379e5; // 1 GeV^-2 = 3.89379×10^5 nb
-// Parâmetros de seção de choque
-//const double sigma0_GeV2 = 0.23; // Constante sigma0 em GeV^-2. (23.0 mb = 0.23 GeV^-2)
 // ---------------- Classe Meson ----------------
-class Meson {
-public:
-    std::string meson;
-    std::string nome;
-    double MV;   // massa do méson (GeV)
-    double mf;   // massa do quark (GeV)
-    double ef;   // carga efetiva
-    double NT;   // normalização transversa
-    double NL;   // normalização longitudinal
-    double R2T;  // parâmetro transverso GLC
-    double R2L;  // parâmetro longitudinal GLC
-    double R2;   // parâmetro BG
-    bool isGLC;  // se é GLC ou BG
-
-    // Construtor Gaus-LC
-    Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
-          double NT_, double R2T_, double NL_, double R2L_)
-        : meson(m), nome(n), MV(MV_), mf(mf_), ef(ef_), NT(NT_), NL(NL_),
-          R2T(R2T_), R2L(R2L_), R2(0.0), isGLC(true) {
-            //if m = Jpsi {
-            //    B = 4.5 + 2* 0.164 *log(W2/95);
-           //     else if m = phi {
-            //        B = 0.60 * (14.0 / pow((Q2 + MV*MV), 0.26) + 1.0);
-           // }
-          }
-
-    // Construtor Boosted Gaussian
-    Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
-          double NT_, double NL_, double R2_)
-        : meson(m), nome(n), MV(MV_), mf(mf_), ef(ef_), NT(NT_), NL(NL_),
-          R2T(0.0), R2L(0.0), R2(R2_), isGLC(false) {}
-};
-
-// Definição dos mésons
-// Meson(meson, nome, MV, mf, ef, NT, R2T, NL, R2L)  Gaus-LC
-Meson Jpsi_GLC("Jpsi", "Jpsi_GLC", massa_psi, mc, qJ, 1.23, 6.5, 0.83, 6.5);
-Meson phi_GLC("phi", "phi_GLC", massa_phi, ms, qS, 4.75, 16.0, 1.0, 16.0);
-// Meson(meson, nome, MV, mf, ef, NT, NL, R2)        Boosted Gaussian
-Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.5890, 0.5860, R2_psi);
-Meson phi_BG("phi", "phi_BG", massa_phi, ms, qS, 0.9950, 0.8400, R2_phi);
 
 
-// Struct dos mesons pra selecionar
 
-struct MesonModels{
-    const Meson& M_GLC;
-    const Meson& M_BG;
-};
 
-std::map<std::string, MesonModels> meson_models = {
-    {"Jpsi", {Jpsi_GLC, Jpsi_BG}},
-    {"phi", {phi_GLC, phi_BG}},
-};
 
 // ---------------- slope B(Q2) ----------------
 inline double B(double x, double Q2, const Meson& M) {
@@ -390,9 +244,9 @@ void overlap_csv(void)
 
 // ------------ calculo do N -----------
  
- double QS2_GBW( double x, double x_0 = 3e-4)
+ double QS2_GBW( double x, parametros_GBW params)
 {
-    return pow(x_0 / x, lambda);
+    return pow(params.x0 / x, params.lambda);
 }   
  
 double QS_bCGC( double x, double b, double x0 = 1.84e-6)
@@ -403,9 +257,9 @@ double QS_bCGC( double x, double b, double x0 = 1.84e-6)
     return Qs2;
 }
  
-double N_GBW(double r,  double x, double x_0 = 3e-4)
+double N_GBW(double r,  double x, parametros_GBW params)
 {
-    double Qs2 = QS2_GBW(x, x_0);
+    double Qs2 = QS2_GBW(x, params);
     double arg = (r * r) * Qs2 / 4.0;
     return (1.0 - exp(-arg))*std::pow(1.0-x, 5.26);
 }
@@ -645,15 +499,7 @@ void debug_correc(void)
     }
 }
 
-// ----------------- conversão W <-> x ----------------
 
-double x_to_W(double x, const Meson& M) {
-    return M.MV / std::sqrt(x);
-}
-
-double W_to_x(double W, const Meson& M) {
-    return (M.MV * M.MV) / (W * W);
-}
 // ---------------- cálculo da seção de choque ----------------
 // ---------------- primeiro em ipsat, depois com os fatores de correção ----------------
 double dsigma_dt(double x, double Q2, const Meson& M, double t,
@@ -674,7 +520,7 @@ double sigma_ipsat(double x, double Q2, const Meson& M,
                  double rmin = 1e-4, double rmax = 10.0)
 {
     double B_val = B(x, Q2, M);
-    double sigma = dsigma_dt(x, Q2, M, 0)/(16 * M_PI * B_val);
+    double sigma = dsigma_dt(x, Q2, M, 0)/(B_val);
     //double N_t = 100;
     //auto ft = [&](double t) {
     //    return dsigma_dt(x, Q2, M, t, Nr, Nz, rmin, rmax);
@@ -683,25 +529,7 @@ double sigma_ipsat(double x, double Q2, const Meson& M,
     return sigma;
 }
 
-// ----------------- função escolhe meson ----------
-Meson input_meson()
-{
-    std::string meson_input;
-    std::cout << "Insira o meson (Jpsi, phi): ";
-    std::cin >> meson_input;
 
-    // normalização simples
-    if (meson_input == "jpsi") meson_input = "Jpsi";
-    if (meson_input == "Phi")  meson_input = "phi";
-
-    auto it = meson_models.find(meson_input);
-    if (it == meson_models.end()) {
-        std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
-        it = meson_models.find("Jpsi");
-    }
-
-    return it->second.M_GLC; // Retorna o modelo GLC por padrão
-}
 // ----------------- função para gerar csv da seção de choque dsigma/dt para um W específico ---------- 
 void dsigma_dt_csv(double W, const Meson& M_GLC)
 {
@@ -731,14 +559,16 @@ void dsigma_dt_csv(double W, const Meson& M_GLC)
     }
     fout.close();
     std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+
+    plot_dsigma_dt(M_GLC.meson);
 }
 // ----------------- função para gerar os csvs de dsigma/dt para os W escolhidos ---------- 
 void dsigma_dump(void)
 {
     const Meson M_GLC = input_meson(); //importa o glc do meson escolhido
 
-    for(double W : {75.0, 100.0}){
-        dsigma_plot(W, M_GLC);
+    for(double W : {70.0}){
+        dsigma_dt_csv(W, M_GLC);
     }
   
 }
@@ -880,7 +710,7 @@ void run_sigma_csv()
     std::ofstream fout(filename);
     fout << "W,sigma_GLC,sigma_BG\n";
 
-    const int Nw = 10;
+    const int Nw = 100;
     double Wmin = 25.0;
     double Wmax = 3e3;
 
@@ -918,73 +748,9 @@ void run_sigma_csv()
     plot_sigma(M_GLC.meson);
 }
 
-void perfil(const Meson& meson){
-    if (meson.isGLC){
-        std::cout << "Perfil do méson Gaus-LC:\n";
-        std::cout << "Méson: " << meson.meson << "\n";
-        std::cout << "Massa do méson (GeV): " << meson.MV << "\n";
-        std::cout << "Massa do quark (GeV): " << meson.mf << "\n";
-        std::cout << "Carga efetiva: " << meson.ef << "\n";
-        std::cout << "Normalização transversa NT: " << meson.NT << "\n";
-        std::cout << "Parâmetro transverso R2T (GeV^-2): " << meson.R2T << "\n";
-        std::cout << "Normalização longitudinal NL: " << meson.NL << "\n";
-        std::cout << "Parâmetro longitudinal R2L (GeV^-2): " << meson.R2L << "\n";
-    } else {
-        std::cout << "Perfil do méson Boosted Gaussian:\n";
-        std::cout << "Méson: " << meson.meson << "\n";
-        std::cout << "Massa do méson (GeV): " << meson.MV << "\n";
-        std::cout << "Massa do quark (GeV): " << meson.mf << "\n";
-        std::cout << "Carga efetiva: " << meson.ef << "\n";
-        std::cout << "Normalização transversa NT: " << meson.NT << "\n";
-        std::cout << "Normalização longitudinal NL: " << meson.NL << "\n";
-        std::cout << "Parâmetro R2 (GeV^-2): " << meson.R2 << "\n";
-    }
-}
 
-void draw_wavefunctions(const Meson& M, int Nz = 200)
-{
 
-    const int Npoints = 200;
-    double rmin = 1e-4, rmax = 10.0;
 
-    if (M.isGLC == true) {
-        std::string filename = "csv/" + M.meson + "_wavefunctions_GLC.csv";
-        std::ofstream fout(filename);
-        fout << "r,z,phi_T,phi_L\n";
-        std::cout << "Desenhando funções de onda Gaus-LC para o méson " << M.meson << "...\n";
-        for (int i = 0; i < Npoints; ++i) {
-        double frac = static_cast<double>(i) / (Npoints - 1);
-        double r = rmin * pow(rmax / rmin, frac);
-        for (int j = 0; j < Nz; ++j) {
-            double z = static_cast<double>(j) / (Nz - 1);
-            double phiT = phi_T(r, z, M);
-            double phiL = phi_L(r, z, M);
-            fout << r/CFAC << "," << z << "," << phiT << "," << phiL << "\n";
-        }
-    }
-    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
-    fout.close();
-    } else {
-        std::string filename = "csv/" + M.meson + "_wavefunctions_BG.csv";
-        std::ofstream fout(filename);
-        fout << "r,z,phi_T,phi_L\n";
-        std::cout << "Desenhando funções de onda Boosted Gaussian para o méson " << M.meson << "...\n";
-        for (int i = 0; i < Npoints; ++i) {
-        double frac = static_cast<double>(i) / (Npoints - 1);
-        double r = rmin * pow(rmax / rmin, frac);
-        for (int j = -Nz/2; j < Nz/2; ++j) {
-            double z = j/400.0 + 0.5;
-            double phiT = phi_T(r, z, M);
-            double phiL = phi_L(r, z, M);
-            fout << r/CFAC << "," << z << "," << phiT << "," << phiL << "\n";
-            
-        }
-    }
-    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
-            fout.close();
-    }
-    
-}
 
 int main(){
     int threads;
@@ -996,10 +762,11 @@ int main(){
     //N_plot();
     //plot_sigmaqq();
     //run_rapidez_plot();
-    run_sigma_csv();
+    //run_sigma_csv();
     //plot_sigma(std::string("phi"));    //debug_correc();
     //plot_overlap();
     //printf("Qs = %g\n", QS_bCGC(1e-4,0));
-    //dsigma_dump();
+    //plot_dsigma_dt(std::string("phi"));
+    dsigma_dump();
     return 0;
 }
