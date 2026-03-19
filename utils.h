@@ -5,6 +5,9 @@
 #include <functional>
 #include <map>
 #include "ctes.h"
+#include <string>
+
+std::string extrair_nome_base(const std::string& caminho);
 
 class Meson {
 public:
@@ -61,4 +64,6 @@ double W_to_x(double W, const Meson& M);
 Meson input_meson();
 
 void perfil(const Meson& M);
+
+double B(double x, double Q2, const Meson& M);
 #endif

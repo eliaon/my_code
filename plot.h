@@ -14,9 +14,9 @@ void plot_overlap();
 
 void plot_rapidity();
 
-void plot_sigma(std::string meson);
+void plot_sigma(std::string meson, std::string csv_file);
 
-void plot_sigma_phi();
-void plot_sigma_Jpsi();
+void plot_sigma_phi(std::string csv_file);
+void plot_sigma_Jpsi(std::string csv_file);
 
 #endif // PLOT_H

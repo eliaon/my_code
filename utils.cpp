@@ -10,7 +10,12 @@
 #include <map>
 #include "ctes.h"
 #include "utils.h"
+#include <filesystem>
 
+std::string extrair_nome_base(const std::string& caminho)
+{
+    return std::filesystem::path(caminho).stem().string();
+}
 
 Meson::Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
              double NT_, double R2T_, double NL_, double R2L_)
@@ -172,4 +177,21 @@ void perfil(const Meson& meson){
         std::cout << "Normalização longitudinal NL: " << meson.NL << "\n";
         std::cout << "Parâmetro R2 (GeV^-2): " << meson.R2 << "\n";
     }
+}
+
+// ---------------- slope B(Q2) ----------------
+double B(double x, double Q2, const Meson& M) {
+    double W = std::sqrt(M.MV*M.MV/x);
+    if (M.meson == "Jpsi"){
+        double B1 = 4.80 + 4.0* 0.133 *log(W/90.0); //valores do lhcb dados pelo haimon xdxd
+        return B1;
+    }
+        else if (M.meson == "phi"){
+            double B2 = 0.55 * (14.0 / pow((Q2 + M.MV*M.MV), 0.2) + 1.0);
+            std::cout << "B = " << B2 << "para x = " << x << "%\n";
+            return B2;}
+            else {
+                std::cerr << "Méson desconhecido para cálculo de B: " << M.meson << std::endl;
+                return 0.0;
+            }
 }

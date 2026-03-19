@@ -8,6 +8,7 @@
 #include <ctime>
 #include <Python.h>
 #include "matplotlib-cpp/matplotlibcpp.h"
+#include "utils.h"
 
 namespace plt = matplotlibcpp;
 
@@ -455,38 +456,63 @@ void plot_overlap()
 
 void read_sigma_exp(
     const std::string& filename,
-    std::vector<int>& dataset,
     std::vector<double>& W,
     std::vector<double>& sigma,
     std::vector<double>& error)
 {
     std::ifstream file(filename);
-    if(!file)
-        throw std::runtime_error("Cannot open file: " + filename);
-
     std::string line;
-    std::getline(file,line); // header
 
-    while(std::getline(file,line))
+    while (std::getline(file, line))
     {
-        if(line.empty()) continue;
+        // ignora comentários e linhas vazias
+        if (line.empty() || line[0] == '#')
+            continue;
 
         std::stringstream ss(line);
-        std::string a,b,c,d;
+        std::vector<double> cols;
+        std::string token;
 
-        std::getline(ss,a,',');
-        std::getline(ss,b,',');
-        std::getline(ss,c,',');
-        std::getline(ss,d,',');
+        while (std::getline(ss, token, ','))
+        {
+            try {
+                cols.push_back(std::stod(token));
+            } catch (...) {
+                cols.clear();
+                break;
+            }
+        }
 
-        dataset.push_back(std::stoi(a));
-        W.push_back(std::stod(b));
-        sigma.push_back(std::stod(c));
-        error.push_back(std::stod(d));
+        // precisa ter pelo menos 8 colunas
+        if (cols.size() < 8)
+            continue;
+
+        double W_val     = cols[0];
+        double sigma_val = cols[3]; // μb
+
+        double stat_p = cols[4];
+        double stat_m = std::abs(cols[5]);
+        double sys_p  = cols[6];
+        double sys_m  = std::abs(cols[7]);
+
+        // erro simétrico (média dos módulos)
+        double stat = 0.5 * (stat_p + stat_m);
+        double sys  = 0.5 * (sys_p + sys_m);
+
+        // combinação em quadratura
+        double err = std::sqrt(stat*stat + sys*sys);
+
+        // converte μb → nb
+        sigma_val *= 1000.0;
+        err       *= 1000.0;
+
+        W.push_back(W_val);
+        sigma.push_back(sigma_val);
+        error.push_back(err);
     }
 }
 
-void plot_sigma_Jpsi()
+void plot_sigma_Jpsi(std::string csv_file)
 {
     int Q2 = 0;
 
@@ -495,7 +521,7 @@ void plot_sigma_Jpsi()
 
     read_sigma_exp(
         "csv/sigma_gammap_jpsi.csv",
-        dataset, W_exp, sigma_exp, err_exp);
+         W_exp, sigma_exp, err_exp);
 
     plt::figure_size(800,600);
 
@@ -556,7 +582,7 @@ void plot_sigma_Jpsi()
         std::vector<double> W,sigma_GLC,sigma_BG;
 
         read_csv(
-            "csv/Jpsi_sigma_Q2=0.csv",
+            csv_file,
             W,
             sigma_GLC,
             sigma_BG);
@@ -595,24 +621,34 @@ void plot_sigma_Jpsi()
 
     plt::legend();
 
+    std::string plotname = extrair_nome_base(csv_file);
     std::string out =
-        "plots/sigma/sigma_Jpsi_Q2=0_" +
+        "plots/sigma/" +
+        plotname + "_" +
         timestamp() + ".png";
 
     plt::save(out);
     plt::show();
 }
 
-void plot_sigma_phi()
+void plot_sigma_phi(std::string csv)
 {
     int Q2 = 0;
+    std::string plotname = extrair_nome_base(csv);
 
-    std::string filename =
-        "csv/phi_sigma_Q2=" + std::to_string(Q2) + ".csv";
-
+    // --- dados teóricos ---
     std::vector<double> W, sigma_GLC, sigma_BG;
+    read_csv(csv, W, sigma_GLC, sigma_BG);
 
-    read_csv(filename, W, sigma_GLC, sigma_BG);
+    // --- dados experimentais ---
+    std::vector<double> W_exp, sigma_exp, error_exp;
+
+    read_sigma_exp(
+        "csv/expdata/phi_sigma_expdata_ZEUS(1994).csv",
+        W_exp,
+        sigma_exp,
+        error_exp
+    );
 
     plt::figure_size(800,600);
 
@@ -628,12 +664,10 @@ void plot_sigma_phi()
          {"linestyle","--"},
          {"linewidth","1.2"}});
 
-    // ponto experimental H1
-    std::vector<double> W_exp = {70};
-    std::vector<double> sigma_exp = {960};
-
-    plt::scatter(W_exp, sigma_exp, 30.0,
-        {{"color","blue"},{"label","H1"}});
+    plt::errorbar(W_exp, sigma_exp, error_exp,
+        {{"fmt","o"},
+         {"color","blue"},
+         {"label","ZEUS (1994)"}});
 
     plt::xlim(30,1000);
     plt::ylim(10,10000);
@@ -647,7 +681,6 @@ void plot_sigma_phi()
 
     plt::title(title.str());
 
-    // escalas log
     PyRun_SimpleString(
         "import matplotlib.pyplot as plt\n"
         "plt.xscale('log')\n"
@@ -659,7 +692,7 @@ void plot_sigma_phi()
     plt::legend();
 
     std::string out =
-        "plots/sigma/sigma_phi_Q2=" +
+        "plots/sigma/" + plotname + "_" +
         std::to_string(Q2) + "_" +
         timestamp() + ".png";
 
@@ -667,12 +700,12 @@ void plot_sigma_phi()
     plt::show();
 }
 
-void plot_sigma(std::string meson)
+void plot_sigma(std::string meson, std::string csv)
 {
     if(meson == "Jpsi")
-        plot_sigma_Jpsi();
+        plot_sigma_Jpsi(csv);
     else if(meson == "phi")
-        plot_sigma_phi();
+        plot_sigma_phi(csv);
     else
         throw std::runtime_error("Meson desconhecido: " + meson);
 }
