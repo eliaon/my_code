@@ -28,11 +28,11 @@ Meson::Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
       NT(NT_), NL(NL_), R2T(0.0), R2L(0.0), R2(R2_), isGLC(false) {}
 
 
-Meson Jpsi_GLC("Jpsi", "Jpsi_GLC", massa_psi, mc, qJ, 1.23, 6.5, 0.83, 6.5);
-Meson phi_GLC ("phi",  "phi_GLC",  massa_phi, ms, qS, 4.75, 16.0, 1.0, 16.0);
+Meson Jpsi_GLC("Jpsi", "Jpsi_GLC", massa_psi, mc, qJ, 1.23, 6.5, 0.83, 3.0);
+Meson phi_GLC ("phi",  "phi_GLC",  massa_phi, ms, qS, 4.75, 16.0, 1.41, 9.7);
 
-Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.5890, 0.5860, R2_psi);
-Meson phi_BG  ("phi",  "phi_BG",   massa_phi, ms, qS, 0.9950, 0.8400, R2_phi);
+Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.578, 0.575, 2.3);//R2_psi);
+Meson phi_BG  ("phi",  "phi_BG",   massa_phi, ms, qS, 0.919, 0.825, 11.2);//R2_phi);
 
 std::string doubleParaString(double valor, int casas) {
     std::ostringstream stream;

@@ -11,8 +11,8 @@ const double mb_to_gev = 0.3894;
 const double qJ = 2.0/3.0;
 const double qS = 1.0/3.0;
 
-const double mc = 1.3528;
-const double ms = 0.03;
+const double mc = 1.4;//1.3528;
+const double ms = 0.14;//0.03;
 const double massa_psi = 3.097;
 const double massa_phi = 1.019;
 

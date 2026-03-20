@@ -14,4 +14,6 @@ double beta(double x, double Q2, double lambda_e, const Meson& M);
 
 void debug_correc(void);
 
+double f_c(double r);
+
 #endif //CORRECS_H

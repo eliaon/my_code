@@ -456,59 +456,67 @@ void plot_overlap()
 
 void read_sigma_exp(
     const std::string& filename,
+    std::vector<int>& dataset,
     std::vector<double>& W,
     std::vector<double>& sigma,
-    std::vector<double>& error)
+    std::vector<double>& err)
 {
     std::ifstream file(filename);
     std::string line;
 
     while (std::getline(file, line))
     {
-        // ignora comentários e linhas vazias
         if (line.empty() || line[0] == '#')
             continue;
 
         std::stringstream ss(line);
-        std::vector<double> cols;
         std::string token;
+        std::vector<double> cols;
 
         while (std::getline(ss, token, ','))
         {
-            try {
-                cols.push_back(std::stod(token));
-            } catch (...) {
-                cols.clear();
-                break;
-            }
+            try { cols.push_back(std::stod(token)); }
+            catch (...) { cols.clear(); break; }
         }
 
-        // precisa ter pelo menos 8 colunas
-        if (cols.size() < 8)
-            continue;
+        if (cols.empty()) continue;
 
-        double W_val     = cols[0];
-        double sigma_val = cols[3]; // μb
+        // --- caso 1: formato simples (3 ou 4 colunas) ---
+        if (cols.size() == 3 || cols.size() == 4)
+        {
+            int d = 0;
+            double W_val = cols[0];
+            double s_val = cols[1];
+            double e_val = cols[2];
 
-        double stat_p = cols[4];
-        double stat_m = std::abs(cols[5]);
-        double sys_p  = cols[6];
-        double sys_m  = std::abs(cols[7]);
+            dataset.push_back(d);
+            W.push_back(W_val);
+            sigma.push_back(s_val);
+            err.push_back(e_val);
+        }
 
-        // erro simétrico (média dos módulos)
-        double stat = 0.5 * (stat_p + stat_m);
-        double sys  = 0.5 * (sys_p + sys_m);
+        // --- caso 2: HEPData completo ---
+        else if (cols.size() >= 8)
+        {
+            int d = static_cast<int>(cols[0]);
 
-        // combinação em quadratura
-        double err = std::sqrt(stat*stat + sys*sys);
+            double W_val     = cols[1];
+            double sigma_val = cols[3];
+            double stat_p = cols[4];
+            double stat_m = std::abs(cols[5]);
+            double sys_p  = cols[6];
+            double sys_m  = std::abs(cols[7]);
 
-        // converte μb → nb
-        sigma_val *= 1000.0;
-        err       *= 1000.0;
+            double stat = 0.5 * (stat_p + stat_m);
+            double sys  = 0.5 * (sys_p + sys_m);
 
-        W.push_back(W_val);
-        sigma.push_back(sigma_val);
-        error.push_back(err);
+            double err_val = std::sqrt(stat*stat + sys*sys);
+
+            dataset.push_back(d);
+            W.push_back(W_val);
+            sigma.push_back(sigma_val * 1000.0); // μb → nb
+            err.push_back(err_val * 1000.0);
+        }
     }
 }
 
@@ -520,8 +528,11 @@ void plot_sigma_Jpsi(std::string csv_file)
     std::vector<double> W_exp, sigma_exp, err_exp;
 
     read_sigma_exp(
-        "csv/sigma_gammap_jpsi.csv",
-         W_exp, sigma_exp, err_exp);
+    "csv/sigma_gammap_jpsi.csv",
+    dataset,          
+    W_exp,
+    sigma_exp,
+    err_exp);
 
     plt::figure_size(800,600);
 
@@ -627,6 +638,12 @@ void plot_sigma_Jpsi(std::string csv_file)
         plotname + "_" +
         timestamp() + ".png";
 
+    std::string label = "Arquivo: " + plotname;
+
+PyRun_SimpleString(
+    ("import matplotlib.pyplot as plt\n"
+     "plt.figtext(0.01, 0.01, '" + label + "', fontsize=8, alpha=0.7)\n").c_str()
+);
     plt::save(out);
     plt::show();
 }
@@ -641,14 +658,16 @@ void plot_sigma_phi(std::string csv)
     read_csv(csv, W, sigma_GLC, sigma_BG);
 
     // --- dados experimentais ---
-    std::vector<double> W_exp, sigma_exp, error_exp;
+    std::vector<int> dataset;
+std::vector<double> W_exp, sigma_exp, error_exp;
 
-    read_sigma_exp(
-        "csv/expdata/phi_sigma_expdata_ZEUS(1994).csv",
-        W_exp,
-        sigma_exp,
-        error_exp
-    );
+read_sigma_exp(
+    "csv/expdata/phi_sigma_expdata_ZEUS(1994).csv",
+    dataset,     
+    W_exp,
+    sigma_exp,
+    error_exp
+);
 
     plt::figure_size(800,600);
 
@@ -696,6 +715,13 @@ void plot_sigma_phi(std::string csv)
         std::to_string(Q2) + "_" +
         timestamp() + ".png";
 
+
+    std::string label = "Arquivo: " + plotname;
+
+PyRun_SimpleString(
+    ("import matplotlib.pyplot as plt\n"
+     "plt.figtext(0.01, 0.01, '" + label + "', fontsize=8, alpha=0.7)\n").c_str()
+);
     plt::save(out);
     plt::show();
 }

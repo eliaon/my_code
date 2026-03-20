@@ -74,3 +74,17 @@ void debug_correc(void)
         std::cout << "x: " << xi << "  lambda_e: " << lambda_e << "  Rg: " << Rg << "  beta: " << beta_val << std::endl;
     }
 }
+
+
+// --------------- correção não perturbativa para o phi --------------
+
+double f_c(double r)
+{
+    double R = 6.8; //GeV^-1
+    double B = -0.9;;
+    double omega = 0.15; //GeV
+    double omega2 = omega * omega;
+    double fc_num = 1.0 + B * std::exp(-omega2*(r - R)*(r - R));
+    double fc_den = 1.0 + B * std::exp(-omega2*R*R);
+    return fc_num / fc_den;
+}
