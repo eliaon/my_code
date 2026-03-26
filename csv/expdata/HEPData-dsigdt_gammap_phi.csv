@@ -1,0 +1,16 @@
+#: table_doi: 10.17182/hepdata.44895.v1/t3
+#: name: Table 3
+#: description: Numerical values of dsig/dt distribution read from plot.
+
+#: data_file: Table3.yaml
+#: keyword reactions: GAMMA P --> PHI P
+#: keyword observables: DSIG/DT
+#: keyword phrases: Exclusive | Single Differential Cross Section | Photoproduction | Strange production
+#: M(P=1_2) [GeV],,,70.0 (60.0-80.0)
+#: RE,,,GAMMA P --> PHI < K+ K- > P
+ABS(T) [GEV],ABS(T) [GEV] LOW,ABS(T) [GEV] HIGH,DSIG/DT [MUB/GEV**2],error +,error -
+0.145,0.1,0.2,2.53,0.6,-0.6
+0.245,0.2,0.3,1.24,0.19,-0.19
+0.345,0.3,0.4,0.47,0.13,-0.13
+0.445,0.4,0.5,0.31,0.07,-0.07
+

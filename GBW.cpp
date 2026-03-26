@@ -68,8 +68,8 @@ double amplitude_GBW(double x, double Q2, const Meson& M,
     auto amp_r = [x, Q2, M, gbw, Nz](double r) {
         double Ov = overlap_r(r, Q2, M, Nz);
         double sigma_qq = sigma_qq_GBW(r, x, gbw);
-        //double sqrt_fc = std::sqrt(f_c(r));
-        return 0.5 * r * Ov * sigma_qq; //* sqrt_fc; // r de d²r = 2π r dr
+        double sqrt_fc = std::sqrt(f_c(r));
+        return 0.5 * r * Ov * sigma_qq * sqrt_fc; // r de d²r = 2π r dr
     };
     double amp = integrate_simpson(amp_r, rmin, rmax, Nr);
     return amp;
@@ -79,15 +79,53 @@ double sigma_x_GBW(double x, double Q2 , const Meson& M,
                int Nr, int Nz, 
                double rmin, double rmax)
 {
-    parametros_GBW params = gbw_50; // ou escolha outro conjunto de parâmetros se desejar
+    parametros_GBW params = gbw_10; // ou escolha outro conjunto de parâmetros se desejar
     double amp = amplitude_GBW(x, Q2, M, params, Nr, Nz, rmin, rmax);
-    double B_val = B(x, Q2, M);
-    double lambda_e = calculate_lambda(x, Q2, amp, M);
+    double B_val = B_slope(x, Q2, M);
+    double lambda_e = calculate_lambda(x, Q2, M);
     double RG_val = RG(x, Q2, lambda_e, M);
     double beta_val = beta(x, Q2, lambda_e, M);
+
+    //std::cout << "x: " << x << "  lambda_e: " << lambda_e << "  Rg: " << RG_val << "  beta: " << beta_val << std::endl;
+
     double correction_factor = RG_val * RG_val * (1.0 + beta_val * beta_val);
     return correction_factor * (amp * amp) / (16.0 * M_PI * B_val);
 }
+
+// --------------- modelos para parametrizar B e omega ------------
+
+double amplitude_model(double x,  double B, double omega,
+                        const Meson& M, double Q2,  int Nr, 
+                        int Nz, double rmin, double rmax)
+{
+    auto amp_r = [x, Q2, M, B, omega, Nz](double r) {
+        double Ov = overlap_r(r, Q2, M, Nz);
+        double sigma_qq = sigma_qq_GBW(r, x, gbw);
+        double sqrt_fc = std::sqrt(f_c(r, B, omega));
+        return 0.5 * r * Ov * sigma_qq * sqrt_fc; // r de d²r = 2π r dr
+    };
+    double amp = integrate_simpson(amp_r, rmin, rmax, Nr);
+    return amp;
+}
+
+double sigma_model(double x, double B, double omega, const Meson& M, double Q2,
+                     int Nr, int Nz, double rmin, double rmax)
+    {
+     parametros_GBW params = gbw_10; // ou escolha outro conjunto de parâmetros se desejar
+     double amp = amplitude_model(x, B, omega, M, Q2, Nr, Nz, rmin, rmax);
+     double B_slope_val = B_slope(x, Q2, M);
+     double lambda_e = calculate_lambda(x, Q2, M);
+     double RG_val = RG(x, Q2, lambda_e, M);
+     double beta_val = beta(x, Q2, lambda_e, M);
+     double fc_val = f_c(std::sqrt(amp), B, omega);
+    
+     double correction_factor = RG_val * RG_val * (1.0 + beta_val * beta_val) * fc_val;
+     return correction_factor * (amp * amp) / (16.0 * M_PI * B_slope_val);
+    }
+
+
+
+
 
 void run_sigma_csv_GBW()
 {
@@ -99,12 +137,12 @@ void run_sigma_csv_GBW()
     const Meson& M_BG  = meson_models.find(M_GLC.meson)->second.M_BG; //pega o bg correspondente ao meson escolhido
 
     std::string Q2_str = std::format("{:.3g}", Q2);
-    std::string filename = "csv/" + M_GLC.meson + "_sigma_GBW(50)_Q2=" + Q2_str + ".csv";
+    std::string filename = "csv/" + M_GLC.meson + "_sigma_GBW(10)_Q2=" + Q2_str + ".csv";
     std::ofstream fout(filename);
     fout << "W,sigma_GLC,sigma_BG\n";
 
     const int Nw = 100;
-    double Wmin = 25.0;
+    double Wmin = 1.0;
     double Wmax = 3e3;
 
     using clock = std::chrono::steady_clock;
@@ -124,7 +162,7 @@ void run_sigma_csv_GBW()
         Wv[i] = W;
         sigma_GLC_v[i] = sigma_x_GBW(x, Q2, M_GLC) * GeV2_to_nb;
         sigma_BG_v[i]  = sigma_x_GBW(x, Q2, M_BG) * GeV2_to_nb;
-        std::cout << Wv[i] << "," << sigma_GLC_v[i] << "," << sigma_BG_v[i] << "%\n";
+        std::cout << Wv[i] << "," << sigma_GLC_v[i] << "," << sigma_BG_v[i] << "\n";
 
     }
 

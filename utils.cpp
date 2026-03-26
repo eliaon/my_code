@@ -11,6 +11,12 @@
 #include "ctes.h"
 #include "utils.h"
 #include <filesystem>
+#include "GBW.h"
+#include "plot.h"
+#include <Minuit2/Minuit2/Minuit2Minimizer.h>
+#include <Minuit2/Math/Functor.h>
+
+
 
 std::string extrair_nome_base(const std::string& caminho)
 {
@@ -180,7 +186,7 @@ void perfil(const Meson& meson){
 }
 
 // ---------------- slope B(Q2) ----------------
-double B(double x, double Q2, const Meson& M) {
+double B_slope(double x, double Q2, const Meson& M) {
     double W = std::sqrt(M.MV*M.MV/x);
     if (M.meson == "Jpsi"){
         double B1 = 4.80 + 4.0* 0.133 *log(W/90.0); //valores do lhcb dados pelo haimon xdxd
@@ -188,10 +194,51 @@ double B(double x, double Q2, const Meson& M) {
     }
         else if (M.meson == "phi"){
             double B2 = 0.55 * (14.0 / pow((Q2 + M.MV*M.MV), 0.2) + 1.0);
-            std::cout << "B = " << B2 << "para x = " << x << "%\n";
             return B2;}
             else {
                 std::cerr << "Méson desconhecido para cálculo de B: " << M.meson << std::endl;
                 return 0.0;
             }
 }
+
+
+struct Chi2{
+    const std::vector<double>& W_exp;
+    const std::vector<double>& sigma_exp;
+    const std::vector<double>& error;
+
+    double operator()(const std::vector<double>& par) const {
+        double omega = par[0];
+        double B = par[1];
+
+        double chi2 = 0.0;
+
+        for(size_t i=0; i<W_exp.size(); ++i){
+            double model = sigma_model(W_to_x(W_exp[i], phi_BG), B, 
+                                        omega, phi_BG);
+            double diff = model - sigma_exp[i];
+            chi2 += (diff * diff) / (error[i] * error[i]);
+        }
+        return chi2;
+    }
+};
+
+double calc_chi2(double B, double omega){
+    std::vector<int> dataset;
+    std::vector<double> W_exp, sigma_exp, error;
+    read_sigma_exp("csv/expdata/sigma/phi_fit_data.csv",dataset, W_exp, sigma_exp, error);
+
+    double chi2 = Chi2{W_exp, sigma_exp, error}({omega, B}); // Exemplo de parâmetros
+    double ndof = W_exp.size() - 2; // número de pontos menos número de parâmetros
+    std::cout << "Chi2: " << chi2 << ", ndof: " << ndof << ", chi2/ndof: " << chi2/ndof << std::endl;
+    
+    return chi2;
+}
+
+ROOT::Minuit2::Minuit2Minimizer minimizer;
+
+ROOT::Math::Functor fcn(Chi2, 2);
+minimizer.SetFunction(fcn);
+
+minimizer.SetVariable(0, "omega", 0.5, 0.01); // chute inicial e passo
+minimizer.SetVariable(1, "B", -5.0, 0.1); // chute inicial e passo

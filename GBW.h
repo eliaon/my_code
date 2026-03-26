@@ -34,6 +34,12 @@ double sigma_x_GBW(double x, double Q2 , const Meson& M,
                int Nr = 600, int Nz = 200,
                double rmin = 1e-4, double rmax = 10.0);
 
+double amplitude_model(double x,  double B, double omega,
+                        const Meson& M, double Q2 = 0,  int Nr = 600,
+                        int Nz = 200, double rmin = 1e-4, double rmax = 10.0);
+
+double sigma_model(double x, double B, double omega, const Meson& M, double Q2 = 0,
+                     int Nr = 600, int Nz = 200, double rmin = 1e-4, double rmax = 10.0);
 
 
 

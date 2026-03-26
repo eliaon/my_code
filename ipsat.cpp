@@ -114,7 +114,7 @@ double dsigma_dt(double x, double Q2, const Meson& M, double t,
 {
     double Delta = std::sqrt(t);
     double amp = amplitude_ipsat(x, Delta, Q2, M, Nr, Nz, rmin, rmax);
-    double lambda_e = calculate_lambda(x, Q2, amp, M);
+    double lambda_e = calculate_lambda(x, Q2, M);
     double Rg_val = RG(x, Q2, lambda_e, M);
     double beta_val = beta(x, Q2, lambda_e, M);
     return ((amp * amp) / (16.0 * M_PI )) * Rg_val * Rg_val * (1.0 + beta_val * beta_val);
@@ -126,7 +126,7 @@ double sigma_ipsat_slope(double x, double Q2, const Meson& M,
                  int Nr, int Nz, 
                  double rmin, double rmax)
 {
-    double B_val = B(x, Q2, M);
+    double B_val = B_slope(x, Q2, M);
     double sigma = dsigma_dt(x, Q2, M, 0, Nr, Nz, rmin, rmax)/(B_val);
     return sigma;
 }

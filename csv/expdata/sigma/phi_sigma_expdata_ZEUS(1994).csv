@@ -1,0 +1,13 @@
+#: table_doi: 10.17182/hepdata.44895.v1/t1
+#: name: Table 1
+#: description: .
+
+#: data_file: Table1.yaml
+#: keyword reactions: E- P --> E- P PHI | GAMMA P --> PHI P
+#: keyword observables: SIG
+#: keyword phrases: Exclusive | Integrated Cross Section | Cross Section | Photoproduction | Strange production | Electron production
+#: ABS(T(P=3)) [GEV**2],,,<0.5
+#: RE,,,GAMMA P --> PHI < K+ K- > P
+M(P=1_2) [GEV],M(P=1_2) [GEV] LOW,M(P=1_2) [GEV] HIGH,SIG [MUB],stat +,stat -,sys +,sys -
+70.0,60.0,80.0,0.96,0.19,-0.19,0.21,-0.18
+

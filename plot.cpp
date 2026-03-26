@@ -466,28 +466,72 @@ void read_sigma_exp(
 
     while (std::getline(file, line))
     {
+        // remove espaços iniciais
+        line.erase(0, line.find_first_not_of(" \t"));
+
         if (line.empty() || line[0] == '#')
             continue;
 
-        std::stringstream ss(line);
-        std::string token;
         std::vector<double> cols;
 
-        while (std::getline(ss, token, ','))
+        // --- tenta parsing como CSV ---
         {
-            try { cols.push_back(std::stod(token)); }
-            catch (...) { cols.clear(); break; }
+            std::stringstream ss(line);
+            std::string token;
+
+            while (std::getline(ss, token, ','))
+            {
+                try {
+                    cols.push_back(std::stod(token));
+                }
+                catch (...) {
+                    // ignora tokens não numéricos (ex: "-")
+                }
+            }
         }
 
-        if (cols.empty()) continue;
+        // --- fallback: separação por espaço/tab ---
+        if (cols.size() < 3)
+        {
+            cols.clear();
+            std::stringstream ss(line);
+            std::string token;
 
-        // --- caso 1: formato simples (3 ou 4 colunas) ---
-        if (cols.size() == 3 || cols.size() == 4)
+            while (ss >> token)
+            {
+                try {
+                    cols.push_back(std::stod(token));
+                }
+                catch (...) {
+                    // ignora lixo
+                }
+            }
+        }
+
+        if (cols.size() < 3)
+            continue;
+
+        // --- caso 1: formato simples ---
+        if (cols.size() == 3)
         {
             int d = 0;
+            dataset.push_back(d);
+            W.push_back(cols[0]);
+            sigma.push_back(cols[1]);
+            err.push_back(cols[2]);
+        }
+
+        // --- caso 2: erro assimétrico (4 colunas) ---
+        else if (cols.size() >= 4 && cols.size() < 8)
+        {
+            int d = 0;
+
             double W_val = cols[0];
             double s_val = cols[1];
-            double e_val = cols[2];
+            double dy_minus = std::abs(cols[2]);
+            double dy_plus  = std::abs(cols[3]);
+
+            double e_val = 0.5 * (dy_minus + dy_plus);
 
             dataset.push_back(d);
             W.push_back(W_val);
@@ -495,13 +539,14 @@ void read_sigma_exp(
             err.push_back(e_val);
         }
 
-        // --- caso 2: HEPData completo ---
+        // --- caso 3: HEPData completo ---
         else if (cols.size() >= 8)
         {
             int d = static_cast<int>(cols[0]);
 
             double W_val     = cols[1];
             double sigma_val = cols[3];
+
             double stat_p = cols[4];
             double stat_m = std::abs(cols[5]);
             double sys_p  = cols[6];
@@ -658,16 +703,27 @@ void plot_sigma_phi(std::string csv)
     read_csv(csv, W, sigma_GLC, sigma_BG);
 
     // --- dados experimentais ---
-    std::vector<int> dataset;
-std::vector<double> W_exp, sigma_exp, error_exp;
+    std::vector<int> dataset_fixedpoint;
+std::vector<double> W_fixedpoint, sigma_fixedpoint, error_fixedpoint;
 
 read_sigma_exp(
-    "csv/expdata/phi_sigma_expdata_ZEUS(1994).csv",
-    dataset,     
-    W_exp,
-    sigma_exp,
-    error_exp
+    "csv/expdata/sigma/phi_fixedpoint_data(nb).csv",
+    dataset_fixedpoint,     
+    W_fixedpoint,
+    sigma_fixedpoint,
+    error_fixedpoint
 );
+
+
+    std::vector<int> dataset_ZEUS;
+    std::vector<double> W_ZEUS, sigma_ZEUS, error_ZEUS;
+
+    read_sigma_exp(
+        "csv/expdata/sigma/phi_sigma_expdata_ZEUS(1994).csv",
+        dataset_ZEUS,
+        W_ZEUS,
+        sigma_ZEUS,
+        error_ZEUS);
 
     plt::figure_size(800,600);
 
@@ -683,13 +739,18 @@ read_sigma_exp(
          {"linestyle","--"},
          {"linewidth","1.2"}});
 
-    plt::errorbar(W_exp, sigma_exp, error_exp,
+    plt::errorbar(W_fixedpoint, sigma_fixedpoint, error_fixedpoint,
         {{"fmt","o"},
          {"color","blue"},
+         {"label","Fixed Point"}});
+
+    plt::errorbar(W_ZEUS, sigma_ZEUS, error_ZEUS,
+        {{"fmt","s"},
+         {"color","green"},
          {"label","ZEUS (1994)"}});
 
-    plt::xlim(30,1000);
-    plt::ylim(10,10000);
+    plt::xlim(8,100);
+    plt::ylim(100.0,10000.0);
 
     plt::xlabel("$W$ [GeV]");
     plt::ylabel("$\\sigma$ [nb]");

@@ -39,7 +39,7 @@ void print_B_values(const Meson& M, double Q2, double Wmin=30.0, double Wmax=100
         double frac = static_cast<double>(i) / (Npoints - 1);
         double W = Wmin * pow(Wmax / Wmin, frac);
         double x = (M.MV * M.MV) / (W * W);
-        double B_val = B(x, Q2, M);
+        double B_val = B_slope(x, Q2, M);
         std::cout << "W: " << W << " GeV, B: " << B_val << " GeV^-2\n";
     }
 }
@@ -186,11 +186,14 @@ int main(){
     //N_plot();
     //plot_sigmaqq();
     //run_rapidez_plot();
-    run_sigma_csv_GBW();
+    //run_sigma_csv_GBW();
+    //plot_sigma_phi("csv/phi_sigma_GBW(10)_Q2=0.csv");
     //plot_sigma(std::string("phi"));    //debug_correc();
     //plot_overlap();
     //printf("Qs = %g\n", QS_bCGC(1e-4,0));
     //plot_dsigma_dt(std::string("phi"));
     //dsigma_dump();
+    //debug_correc();
+    calc_chi2();
     return 0;
 }

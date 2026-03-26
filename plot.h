@@ -6,6 +6,13 @@
 
 std::string get_meson();
 
+void read_sigma_exp(
+    const std::string& filename,
+    std::vector<int>& dataset,
+    std::vector<double>& W,
+    std::vector<double>& sigma,
+    std::vector<double>& err);
+
 void plot_dsigma_dt(std::string meson);
 
 void plot_N_models();

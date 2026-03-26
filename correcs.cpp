@@ -10,12 +10,14 @@
 
 // Fatores de correção Rg e deltinha
  
- double lnA( double y, double Q2, double amp, const Meson& M)
+double lnA(double y, double Q2, const Meson& M)
 {
-     double x = std::exp(-y);
+    double x = std::exp(-y);
+    double amp = amplitude_GBW(x, Q2, M, gbw);
+
     if (amp <= 0) {
-        std::cerr << "Atenção: amplitude não positiva em y=" << y << std::endl;
-        return 0.0;
+        std::cerr << "Amp <= 0 em x=" << x << std::endl;
+        return -1e30; // evita log inválido
     }
 
     return std::log(amp);
@@ -25,23 +27,27 @@
 // -------------- lamnda_e --------------
 // pipeline é a seguinte: calcula sua amplitude, usa ela para o lambda e depois o lambda para o Rg e beta, que são os fatores de correção
 // fica mais leve calculando o lambda uma vez só.
-double calculate_lambda(double x, double Q2, double amp, const Meson& M)
+double calculate_lambda(double x, double Q2, const Meson& M)
 {
     const double h = 1e-4;
     double err;
     double y = -std::log(x);
 
-    if (x > 1e-2) {
-        return 0.2; // valor aproximado para x muito grande
-    }
-    else{
-         auto f_lnA = [&](double y) {
-        return lnA(y, Q2, amp, M);
+
+    auto f_lnA = [&](double y_var) {
+        return lnA(y_var, Q2, M);
     };
 
     double dlnA_dy = dfridr(f_lnA, y, h, err);
-    return dlnA_dy;   
+
+    if (x > 1e-2) {
+        double y_b = -log(1e-2);
+        double dlnA_dy_b = dfridr(f_lnA, y_b, h, err);
+        
+        return dlnA_dy_b; // para x > 1e-2, usa o valor de lambda em x=1e-2
     }
+
+    return dlnA_dy;
 }
 
 // ----------------- fator de correção Rg skeweness ----------------
@@ -64,10 +70,10 @@ void debug_correc(void)
     double Q2 = 0.0;
     const Meson& M = Jpsi_GLC;
 
-    for (int i = 0; i < 100; ++i) {
-        double xi = x * std::pow(10.0, i * 0.1);
+    for (int i = 0; i < 120; ++i) {
+        double xi = x + i * 1e-4; // varre x de 1e-4 a 1e-2
         double amp = amplitude_GBW(xi, Q2, M, gbw);
-        double lambda_e = calculate_lambda(xi, Q2, amp, M);
+        double lambda_e = calculate_lambda(xi, Q2, M);
         double Rg = RG(xi, Q2, lambda_e, M);
         double beta_val = beta(xi, Q2, lambda_e, M);
 
@@ -78,11 +84,9 @@ void debug_correc(void)
 
 // --------------- correção não perturbativa para o phi --------------
 
-double f_c(double r)
+double f_c(double r,  double B, double omega, double R)
 {
-    double R = 6.8; //GeV^-1
-    double B = -0.9;;
-    double omega = 0.15; //GeV
+    //[R]  = GeV^-1
     double omega2 = omega * omega;
     double fc_num = 1.0 + B * std::exp(-omega2*(r - R)*(r - R));
     double fc_den = 1.0 + B * std::exp(-omega2*R*R);

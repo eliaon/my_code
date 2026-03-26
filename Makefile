@@ -16,7 +16,12 @@ SRCS = dipoleamplitude.cpp \
        integration.cpp \
        plot.cpp \
        utils.cpp \
-       ctes.cpp
+       ctes.cpp \
+       GBW.cpp \
+       bCGC.cpp \
+       ipsat.cpp \
+       correcs.cpp \
+       wavefunctions.cpp
 
 TARGET = main
 
