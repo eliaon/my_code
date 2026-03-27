@@ -68,7 +68,7 @@ double amplitude_GBW(double x, double Q2, const Meson& M,
     auto amp_r = [x, Q2, M, gbw, Nz](double r) {
         double Ov = overlap_r(r, Q2, M, Nz);
         double sigma_qq = sigma_qq_GBW(r, x, gbw);
-        double sqrt_fc = std::sqrt(f_c(r));
+        double sqrt_fc = std::sqrt(f_c(r, -0.9, 0.15));
         return 0.5 * r * Ov * sigma_qq * sqrt_fc; // r de d²r = 2π r dr
     };
     double amp = integrate_simpson(amp_r, rmin, rmax, Nr);
@@ -117,10 +117,11 @@ double sigma_model(double x, double B, double omega, const Meson& M, double Q2,
      double lambda_e = calculate_lambda(x, Q2, M);
      double RG_val = RG(x, Q2, lambda_e, M);
      double beta_val = beta(x, Q2, lambda_e, M);
-     double fc_val = f_c(std::sqrt(amp), B, omega);
     
-     double correction_factor = RG_val * RG_val * (1.0 + beta_val * beta_val) * fc_val;
-     return correction_factor * (amp * amp) / (16.0 * M_PI * B_slope_val);
+     double correction_factor = RG_val * RG_val * (1.0 + beta_val * beta_val);
+     double sigma_gev = correction_factor * (amp * amp) / (16.0 * M_PI * B_slope_val);
+     double sigma_nb = sigma_gev * GeV2_to_nb;
+     return sigma_nb;
     }
 
 

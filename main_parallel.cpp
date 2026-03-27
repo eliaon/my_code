@@ -194,6 +194,7 @@ int main(){
     //plot_dsigma_dt(std::string("phi"));
     //dsigma_dump();
     //debug_correc();
-    calc_chi2();
+    //calc_chi2();
+    minimizar_chi2();
     return 0;
 }

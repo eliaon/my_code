@@ -68,4 +68,7 @@ void perfil(const Meson& M);
 double B_slope(double x, double Q2, const Meson& M);
 
 double calc_chi2(double B = -0.9, double omega = 0.15);
+
+void minimizar_chi2();
+
 #endif
