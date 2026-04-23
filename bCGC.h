@@ -3,15 +3,29 @@
 
 #include <iostream>
 
-double x_0 = 1.84e-6; // valor típico para x_0 em modelos bCGC
+namespace bCGC {
+    inline double lambda = 0.2063; // valor típico para lambda em modelos bCGC
+    inline double gamma_s = 0.6599; // valor típico para gamma_s em modelos bCGC
+    inline double x_0 = 0.00105; // valor típico para x0 em modelos bCGC
+    inline double kappa = 9.9;
+    inline double N_0 = 0.3358;
+    inline double B_CGC = 5.5; // GeV^-2
 
-double QS_bCGC( double x, double b, double x0 = x_0);
 
-double N_IIM(double r,  double x,  double x0 = x_0);
+    double QS( double x, double b);
 
-double prof_bCGC(double r, double x, double b, double x0 = x_0);
+    double N_IIM(double r,  double x);
 
-double sigma_qq_bCGC(double r, double x, double b, double x0 = x_0);
+    double prof(double r, double x, double b);
+
+    double sigma_qq(double r, double x);
+
+    double amplitude_p(double x, double Q2, const Meson& M);
+
+    std::string N_csv(double x);
+
+    std::string sigma_p_csv();
+}
 
 
 

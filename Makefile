@@ -8,13 +8,13 @@ PYTHON_LIB = $(shell python3-config --embed --ldflags)
 NUMPY_INC = $(shell python3 -c "import numpy; print(numpy.get_include())")
 
 # ROOT
-ROOT_INC  = $(shell root-config --cflags)
-ROOT_LIB  = $(shell root-config --libs)
+#ROOT_INC  = $(shell root-config --cflags) # liga se for usar ROOT
+#ROOT_LIB  = $(shell root-config --libs) # liga se for usar ROOT
 
 CXXFLAGS = -O3 -std=c++20 -fopenmp -Wno-deprecated-declarations \
-           $(ROOT_INC) \
            $(PYTHON_INC) \
-           -I$(NUMPY_INC)
+           -I$(NUMPY_INC) 
+           #$(ROOT_INC) 
 
 LDFLAGS = $(PYTHON_LIB) $(ROOT_LIB) -lMinuit2
 
@@ -30,7 +30,9 @@ SRCS = dipoleamplitude.cpp \
        bCGC.cpp \
        ipsat.cpp \
        correcs.cpp \
-       wavefunctions.cpp
+       wavefunctions.cpp \
+       DGLAP.cpp \
+#       minuit.cpp # liga se for fazer ajuste de parâmetros
 
 TARGET = main
 

@@ -22,7 +22,9 @@ DipoleAmplitude::DipoleAmplitude(IPSAT_PARAMETRIZATION mode)
 {
     if (mode == MZ_IPSAT)
     {
-        C = 2.2894; lambda_g = 0.08289; A_g = 2.1953; mc = 1.3528;
+        C = 2.2894; lambda_g = 0.08289; A_g = 2.1953; mc = 1.3528;// original do mantysaari
+        //C=0.38; lambda_g = 0.079; A_g = 1.35; mc = 1.3528; // golec-biernat (2018)
+        //mu0=std::sqrt(1.73);
         mu0=std::sqrt(1.1);
         saturation=true;
     }

@@ -17,20 +17,33 @@ class parametros_GBW {
 
 extern parametros_GBW gbw;
 
-double QS2_GBW( double x, parametros_GBW params);
+extern parametros_GBW GBW_10; // Parâmetros do fit GBW com 10% de correção
 
-double N_GBW(double r,  double x, parametros_GBW params);
+struct TA_Table {
+    std::vector<double> b_vals; // valores de b
+    std::vector<double> TA_vals; // valores de T_A(b)
+};
 
-double sigma_qq_GBW(double r, double x, parametros_GBW params);
+double interpolate_TA(double b, const TA_Table& table);
 
-void run_sigma_csv_GBW();
+TA_Table precompute_TA(int Nb, double bmax, double R, double a, double rho0);
 
-double amplitude_GBW(double x, double Q2, const Meson& M,
+namespace GBW {
+
+double QS2( double x, parametros_GBW params);
+
+double Np(double r,  double x, parametros_GBW params);
+
+double sigma_qq(double r, double x, parametros_GBW params);
+
+void sigma_p_csv();
+
+double amplitude(double x, double Q2, const Meson& M,
                 const parametros_GBW& gbw,
                  int Nr = 600, int Nz = 200,
                  double rmin = 1e-4, double rmax = 10.0);
 
-double sigma_x_GBW(double x, double Q2 , const Meson& M,
+double sigma_x(double x, double Q2 , const Meson& M,
                int Nr = 600, int Nz = 200,
                double rmin = 1e-4, double rmax = 10.0);
 
@@ -42,6 +55,21 @@ double sigma_model(double x, double B, double omega, const Meson& M, double Q2 =
                      int Nr = 600, int Nz = 200, double rmin = 1e-4, double rmax = 10.0);
 
 
+double compute_rho0(int A, double R, double a);
+
+double rho_WS(double r, double R, double a, double rho0);
+
+double sigma_A(double x, double Q2, const Meson& M, const TA_Table& table,
+                    int Nr = 600, int Nz = 200, double rmin = 1e-4, double rmax = 10.0);
+
+void sigma_A_csv();
 
 
+
+
+void rapidez_PbPb_csv();
+
+std::string N_csv(double x);
+
+}
 #endif// GBW_H

@@ -13,9 +13,10 @@
 #include <filesystem>
 #include "GBW.h"
 #include "plot.h"
-#include <Minuit2/Minuit2Minimizer.h>
+#include "dipoleamplitude.hpp"
+#include "DGLAP.hpp"
+#include <algorithm>
 #include <Math/Functor.h>
-
 
 
 std::string extrair_nome_base(const std::string& caminho)
@@ -34,11 +35,20 @@ Meson::Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
       NT(NT_), NL(NL_), R2T(0.0), R2L(0.0), R2(R2_), isGLC(false) {}
 
 
-Meson Jpsi_GLC("Jpsi", "Jpsi_GLC", massa_psi, mc, qJ, 1.23, 6.5, 0.83, 3.0);
-Meson phi_GLC ("phi",  "phi_GLC",  massa_phi, ms, qS, 4.75, 16.0, 1.41, 9.7);
+Meson Jpsi_GLC_GBW("Jpsi", "Jpsi_GLC", massa_psi, mc_GBW, qJ, 1.23, 6.5, 0.83, 3.0);
+Meson phi_GLC_GBW ("phi",  "phi_GLC",  massa_phi, ms_GBW, qS, 4.75, 16.0, 1.41, 9.7);
 
-Meson Jpsi_BG ("Jpsi", "Jpsi_BG",  massa_psi, mc, qJ, 0.578, 0.575, 2.3);//R2_psi);
-Meson phi_BG  ("phi",  "phi_BG",   massa_phi, ms, qS, 0.919, 0.825, 11.2);//R2_phi);
+Meson Jpsi_BG_GBW ("Jpsi", "Jpsi_BG",  massa_psi, mc_GBW, qJ, 0.578, 0.575, 2.3);//R2_psi);
+Meson phi_BG_GBW  ("phi",  "phi_BG",   massa_phi, ms_GBW, qS, 0.919, 0.825, 11.2);//R2_phi);
+
+Meson Jpsi_GLC_ipsat("Jpsi", "Jpsi_GLC", massa_psi, mc_ipsat, qJ, 1.23, 6.5, 0.83, 3.0);
+Meson phi_GLC_ipsat ("phi",  "phi_GLC",  massa_phi, ms_ipsat, qS, 4.75, 16.0, 1.41, 9.7);
+
+Meson Jpsi_BG_ipsat ("Jpsi", "Jpsi_BG",  massa_psi, mc_ipsat, qJ, 0.578, 0.575, 2.3);//R2_psi);
+Meson phi_BG_ipsat  ("phi",  "phi_BG",   massa_phi, ms_ipsat, qS, 0.919, 0.825, 11.2);//R2_phi);
+
+
+
 
 std::string doubleParaString(double valor, int casas) {
     std::ostringstream stream;
@@ -137,31 +147,64 @@ double W_to_x(double W, const Meson& M) {
 
 
 
-std::map<std::string, MesonModels> meson_models = {
-    {"Jpsi", {Jpsi_GLC, Jpsi_BG}},
-    {"phi", {phi_GLC, phi_BG}},
+std::map<std::string, MesonModelsGBW> meson_modelsGBW = {
+    {"Jpsi", {Jpsi_GLC_GBW, Jpsi_BG_GBW}},
+    {"phi", {phi_GLC_GBW, phi_BG_GBW}},
+};
+
+std::map<std::string, MesonModelsipsat> meson_modelsipsat = {
+    {"Jpsi", {Jpsi_GLC_ipsat, Jpsi_BG_ipsat}},
+    {"phi", {phi_GLC_ipsat, phi_BG_ipsat}},
 };
 
 // ----------------- função escolhe meson ----------
-Meson input_meson()
+Meson input_meson(const std::string model)
 {
     std::string meson_input;
     std::cout << "Insira o meson (Jpsi, phi): ";
     std::cin >> meson_input;
 
-    // normalização simples
-    if (meson_input == "jpsi") meson_input = "Jpsi";
-    if (meson_input == "Phi")  meson_input = "phi";
+    // -------- NORMALIZAÇÃO --------
+    // transforma tudo em minúsculo
+    std::transform(meson_input.begin(), meson_input.end(),
+                   meson_input.begin(), ::tolower);
 
-    auto it = meson_models.find(meson_input);
-    if (it == meson_models.end()) {
+    // padroniza nomes
+    if (meson_input == "jpsi") meson_input = "Jpsi";
+    else if (meson_input == "phi") meson_input = "phi";
+    else {
         std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
-        it = meson_models.find("Jpsi");
+        meson_input = "Jpsi";
     }
 
-    return it->second.M_GLC; // Retorna o modelo GLC por padrão
-}
+    // -------- SELEÇÃO DO MODELO --------
+    if (model == "GBW") {
+        auto it = meson_modelsGBW.find(meson_input);
+        if (it == meson_modelsGBW.end()) {
+            std::cerr << "Meson nao encontrado no modelo GBW. Usando Jpsi.\n";
+            return meson_modelsGBW.at("Jpsi").M_GLC;
+        }
+        return it->second.M_GLC;
+    }
+    else if (model == "ipsat") {
+        auto it = meson_modelsipsat.find(meson_input);
+        if (it == meson_modelsipsat.end()) {
+            std::cerr << "Meson nao encontrado no modelo ipsat. Usando Jpsi.\n";
+            return meson_modelsipsat.at("Jpsi").M_GLC;
+        }
+        return it->second.M_GLC;
+    }
+    else {
+        std::cerr << "Modelo desconhecido: " << model
+                  << ". Usando GBW por padrao.\n";
 
+        auto it = meson_modelsGBW.find(meson_input);
+        if (it == meson_modelsGBW.end()) {
+            return meson_modelsGBW.at("Jpsi").M_GLC;
+        }
+        return it->second.M_GLC;
+    }
+}
 void perfil(const Meson& meson){
     if (meson.isGLC){
         std::cout << "Perfil do méson Gaus-LC:\n";
@@ -187,7 +230,7 @@ void perfil(const Meson& meson){
 
 // ---------------- slope B(Q2) ----------------
 double B_slope(double x, double Q2, const Meson& M) {
-    double W = std::sqrt(M.MV*M.MV/x);
+    double W = x_to_W(x, M);
     if (M.meson == "Jpsi"){
         double B1 = 4.80 + 4.0* 0.133 *log(W/90.0); //valores do lhcb dados pelo haimon xdxd
         return B1;
@@ -202,122 +245,371 @@ double B_slope(double x, double Q2, const Meson& M) {
 }
 
 
-struct Chi2 {
-    const std::vector<double>& W_exp;
-    const std::vector<double>& sigma_exp;
-    const std::vector<double>& error;
 
-    double operator()(const double* par) const {
-        double omega = par[0];
-        double B     = par[1];
 
-        double chi2 = 0.0;
-std::cout << "N pontos = " << W_exp.size() << std::endl;
 
-    std::vector<double> x(W_exp.size());
-    for(size_t i=0; i<W_exp.size(); ++i){
-        x[i] = W_to_x(W_exp[i], phi_BG);
+
+
+std::string timestamp(void)
+{
+    std::time_t now = std::time(nullptr);
+    std::tm* local = std::localtime(&now);
+
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", local);
+    return std::string(buffer);
+}
+
+
+// ------------ LÊ CSV COM 2 COLUNAS, PARA N 
+void read_two_columns(
+    const std::string& filename,
+    std::vector<double>& x,
+    std::vector<double>& y)
+{
+    std::ifstream file(filename);
+    std::cout << "Reading file: " << filename << std::endl;
+    if(!file)
+        throw std::runtime_error("Cannot open file: " + filename);
+
+    std::string line;
+
+    std::getline(file,line); // header
+
+    while(std::getline(file,line))
+    {
+        if(line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string a,b;
+
+        std::getline(ss,a,',');
+        std::getline(ss,b,',');
+
+        x.push_back(std::stod(a));
+        y.push_back(std::stod(b));
     }
+}
 
-    for(size_t i=0; i<W_exp.size(); ++i){
-        if (!std::isfinite(x[i]) || x[i] <= 0 || x[i] >= 1) {
-            std::cerr << "x inválido: " << x[i] << " para W=" << W_exp[i] << std::endl;
+void read_sigma_exp(
+    const std::string& filename,
+    std::vector<int>& dataset,
+    std::vector<double>& W,
+    std::vector<double>& sigma,
+    std::vector<double>& err)
+{
+    std::ifstream file(filename);
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        // remove espaços iniciais
+        line.erase(0, line.find_first_not_of(" \t"));
+
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        std::vector<double> cols;
+
+        // --- tenta parsing como CSV ---
+        {
+            std::stringstream ss(line);
+            std::string token;
+
+            while (std::getline(ss, token, ','))
+            {
+                try {
+                    cols.push_back(std::stod(token));
+                }
+                catch (...) {
+                    // ignora tokens não numéricos (ex: "-")
+                }
+            }
+        }
+
+        // --- fallback: separação por espaço/tab ---
+        if (cols.size() < 3)
+        {
+            cols.clear();
+            std::stringstream ss(line);
+            std::string token;
+
+            while (ss >> token)
+            {
+                try {
+                    cols.push_back(std::stod(token));
+                }
+                catch (...) {
+                    // ignora lixo
+                }
+            }
+        }
+
+        if (cols.size() < 3)
+            continue;
+
+        // --- caso 1: formato simples ---
+        if (cols.size() == 3)
+        {
+            int d = 0;
+            dataset.push_back(d);
+            W.push_back(cols[0]);
+            sigma.push_back(cols[1]);
+            err.push_back(cols[2]);
+        }
+
+        // --- caso 2: erro assimétrico (4 colunas) ---
+        else if (cols.size() >= 4 && cols.size() < 8)
+        {
+            int d = 0;
+
+            double W_val = cols[0];
+            double s_val = cols[1];
+            double dy_minus = std::abs(cols[2]);
+            double dy_plus  = std::abs(cols[3]);
+
+            double e_val = 0.5 * (dy_minus + dy_plus);
+
+            dataset.push_back(d);
+            W.push_back(W_val);
+            sigma.push_back(s_val);
+            err.push_back(e_val);
+        }
+
+        // --- caso 3: HEPData completo ---
+        else if (cols.size() >= 8)
+        {
+            int d = static_cast<int>(cols[0]);
+
+            double W_val     = cols[1];
+            double sigma_val = cols[3];
+
+            double stat_p = cols[4];
+            double stat_m = std::abs(cols[5]);
+            double sys_p  = cols[6];
+            double sys_m  = std::abs(cols[7]);
+
+            double stat = 0.5 * (stat_p + stat_m);
+            double sys  = 0.5 * (sys_p + sys_m);
+
+            double err_val = std::sqrt(stat*stat + sys*sys);
+
+            dataset.push_back(d);
+            W.push_back(W_val);
+            sigma.push_back(sigma_val * 1000.0); // μb → nb
+            err.push_back(err_val * 1000.0);
         }
     }
-        for(size_t i=0; i<W_exp.size(); ++i){
-    double model = sigma_model(x[i], B, omega, phi_BG);
-    double diff = model - sigma_exp[i];
-
-    std::cout 
-        << "i=" << i
-        << " model=" << model
-        << " exp=" << sigma_exp[i]
-        << " err=" << error[i]
-        << " contrib=" << (diff*diff)/(error[i]*error[i])
-        << std::endl;
-
-    chi2 += (diff * diff) / (error[i] * error[i]);
 }
-        return chi2;
+
+
+//-------------- LEITOR DE DADOS EXPERIMENTAIS DO XYSCAN ----------------------
+void read_xyscan_csv(const std::string& filename,
+                     std::vector<double>& W,
+                     std::vector<double>& sigma,
+                     std::vector<double>& error)
+{
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao abrir arquivo: " << filename << "\n";
+        return;
     }
-};
 
+    std::string line;
 
-// ---------------- minimização ----------------
+    while (std::getline(file, line)) {
 
-void minimizar_chi2(){
+        // ignora comentários e linhas vazias
+        if (line.empty() || line[0] == '#')
+            continue;
 
-    std::vector<int> dataset;
-    std::vector<double> W_exp, sigma_exp, error;
-    read_sigma_exp("csv/expdata/sigma/phi_fit_data.csv",dataset, W_exp, sigma_exp, error);
+        std::stringstream ss(line);
+        std::string col;
+        std::vector<double> values;
 
-    for(size_t i=0; i<W_exp.size(); ++i){
-    std::cout 
-        << "W=" << W_exp[i]
-        << " sigma_exp=" << sigma_exp[i]
-        << " err=" << error[i]
-        << std::endl;
+        while (std::getline(ss, col, ',')) {
+            if (col.empty()) continue; // ignora vírgula final
+            values.push_back(std::stod(col));
+        }
+
+        if (values.size() < 3)
+    continue;
+
+double w   = values[0];
+double sig = values[1];
+double err;
+
+// caso 1: CSV com 3 colunas (erro já simétrico)
+if (values.size() == 3) {
+    err = values[2];
+}
+// caso 2: CSV com 4 colunas (erro assimétrico)
+else {
+    double dy_minus = values[2];
+    double dy_plus  = values[3];
+    err = 0.5 * (dy_minus + dy_plus);
+}
+
+W.push_back(w);
+sigma.push_back(sig);
+error.push_back(err);
+    }
+
+    file.close();
+}
+
+// ------------ LÊ CSV'S COM 1 INDEPENDENTE E DUAS DEPENDENTES, IDEAL PARA COMPARAÇÕES
+// ------------- BOOSTED GAUSSIAN - GAUSSIAN LIGHT CONE
+
+void read_csv(
+    const std::string& filename,
+    std::vector<double>& x,
+    std::vector<double>& glc,
+    std::vector<double>& bg)
+{
+    std::ifstream file(filename);
+
+    if(!file)
+        throw std::runtime_error("Cannot open file: " + filename);
+
+    x.clear();
+    glc.clear();
+    bg.clear();
+
+    std::string line;
+
+    std::getline(file, line); // header
+    
+    while (std::getline(file, line))
+    {
+        if(line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string a,b,c;
+
+        if (!std::getline(ss, a, ',')) continue;
+        if (!std::getline(ss, b, ',')) continue;
+        if (!std::getline(ss, c, ',')) continue;
+
+        try {
+            x.push_back(std::stod(a));
+            glc.push_back(std::stod(b));
+            bg.push_back(std::stod(c));
+        }
+        catch (...) {
+            // ignora linha mal formatada
+            continue;
+        }
+    }
+
+    // sanity check forte
+    if (x.size() != glc.size() || x.size() != bg.size()) {
+        throw std::runtime_error("CSV columns size mismatch in: " + filename);
+    }
+}
+
+void read_rapidity_hepdata(
+    const std::string& filename,
+    std::vector<double>& y,
+    std::vector<double>& dsdy,
+    std::vector<double>& err)
+{
+    std::ifstream file(filename);
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        if (line.empty()) continue;
+
+        //  remove espaços iniciais
+        line.erase(0, line.find_first_not_of(" \t"));
+
+        if (line.empty()) continue;
+
+        // ignora headers
+        if (line[0] == '#' || line[0] == '|')
+            continue;
+        std::stringstream ss(line);
+        std::string token;
+        std::vector<double> cols;
+
+        while (std::getline(ss, token, ','))
+        {
+            try {
+                cols.push_back(std::stod(token));
+            } catch (...) {}
+        }
+
+        if (cols.size() < 8) continue;
+
+        double y_val = cols[0];
+        double sigma = cols[3];
+
+        double stat_p = cols[4];
+        double stat_m = std::abs(cols[5]);
+        double sys_p  = cols[6];
+        double sys_m  = std::abs(cols[7]);
+
+        double stat = 0.5 * (stat_p + stat_m);
+        double sys  = 0.5 * (sys_p + sys_m);
+
+        double error = std::sqrt(stat*stat + sys*sys);
+
+        y.push_back(y_val);
+        dsdy.push_back(sigma);
+        err.push_back(error);
+    }
+}
+
+// -------------- CARREGA SET DE VALORES DE CURVAS DE N
+
+bool load_set(
+    const std::string& xstr,
+    std::vector<double>& r2_ipsat,
+    std::vector<double>& N_ipsat,
+    std::vector<double>& r2_gbw,
+    std::vector<double>& N_gbw,
+    std::vector<double>& r2_iim,
+    std::vector<double>& N_iim)
+{
+    std::cout << "Loading x=" << xstr << std::endl;
+    read_two_columns("csv/N_ipsat_x=" + xstr + ".csv", r2_ipsat, N_ipsat);
+    read_two_columns("csv/N_GBW_x=" + xstr + ".csv",  r2_gbw,  N_gbw);
+    read_two_columns("csv/N_IIM_x=" + xstr + ".csv",  r2_iim,  N_iim);
+    if(r2_ipsat.empty() || r2_gbw.empty() || r2_iim.empty())
+{
+    std::cerr << "Empty dataset for x=" << xstr << std::endl;
+    return false;
+}
+return true;
 }
 
 
 
-    Chi2 chi2_func{W_exp, sigma_exp, error};
+std::string get_meson()
+{
+    std::cout << "Escreva o meson (Jpsi, phi): ";
+    std::string meson;
+    std::cin >> meson;
 
-    ROOT::Math::Functor fcn(chi2_func, 2);
-    ROOT::Minuit2::Minuit2Minimizer minimizer;
+    if (meson != "Jpsi" && meson != "phi")
+    {
+        std::cerr << "Meson inválido. Use 'Jpsi' ou 'phi'." << std::endl;
+        exit(1);
+    }
 
-    minimizer.SetFunction(fcn); 
-
-    minimizer.SetVariable(0, "omega", 0.5, 0.01); // chute inicial e passo
-    minimizer.SetVariable(1, "B", 1.0, 0.1);    
-
-    minimizer.SetVariableLimits(0, -5.0, 5.0);
-    minimizer.SetVariableLimits(1, -0.99, 10.0);
-
-    bool success;
-
-    success = minimizer.Minimize();
-
-
-if (!success) {
-    std::cerr << "Minimização falhou!" << std::endl;
-    return;
-}
-
-const double* xs = minimizer.X();
-const double* errs = minimizer.Errors();
-
-    std::cout << "omega = " << xs[0] << " ± " << errs[0] << std::endl;
-    std::cout << "B     = " << xs[1] << " ± " << errs[1] << std::endl;
-
-    std::cout << "Status: " << minimizer.Status() << std::endl;
-    double chi2 = minimizer.MinValue();
-    double ndof = W_exp.size() - 2;
-
-    std::cout << "chi2/ndof = " << chi2 / ndof << std::endl;
+    return meson;
 }
 
 
-double calc_chi2(double B, double omega){
-    std::vector<int> dataset;
-    std::vector<double> W_exp, sigma_exp, error;
-
-    read_sigma_exp("csv/expdata/sigma/phi_fit_data.csv",
-                   dataset, W_exp, sigma_exp, error);
-
-    Chi2 chi2_func{W_exp, sigma_exp, error};
-
-    double par[2] = {omega, B};
-    double chi2 = chi2_func(par);
-
-    double ndof = W_exp.size() - 2;
-
-    std::cout << "Chi2: " << chi2
-              << ", ndof: " << ndof
-              << ", chi2/ndof: " << chi2/ndof
-              << std::endl;
-
-    return chi2;
+std::string vec_to_pylist(const std::vector<double>& v)
+{
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < v.size(); ++i) {
+        oss << v[i];
+        if (i != v.size() - 1) oss << ",";
+    }
+    oss << "]";
+    return oss.str();
 }
-
-

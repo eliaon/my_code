@@ -2,7 +2,11 @@
 #include "ctes.h"
 #include "wavefunctions.h"
 #include "GBW.h"
+#include "DGLAP.hpp"
+#include "ipsat.h"
+#include "bCGC.h"
 #include "integration.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -10,32 +14,53 @@
 
 // Fatores de correção Rg e deltinha
  
-double lnA(double y, double Q2, const Meson& M)
+double lnA(double y, double Q2, const Meson& M,
+           std::string dipolemodel,
+           DipoleAmplitude& dipole)
 {
     double x = std::exp(-y);
-    double amp = amplitude_GBW(x, Q2, M, gbw);
 
-    if (amp <= 0) {
-        std::cerr << "Amp <= 0 em x=" << x << std::endl;
-        return -1e30; // evita log inválido
+    double amp = 0.0;
+
+    if (dipolemodel == "GBW") {
+        amp = GBW::amplitude(x, Q2, M, gbw);
+    }
+    else if (dipolemodel == "DGLAP") {
+        amp = DGLAP::amplitude(x, Q2, M, dipole, 200,  1e-4, 10.0);
+    }
+    else if (dipolemodel == "ipsat") {
+        amp = IPSAT::amplitude(x, 0.0, Q2, M, 200, 1e-4, 10.0);
+    }
+    else if (dipolemodel == "bCGC") {
+        amp = bCGC::amplitude_p(x, Q2, M);
+    }
+    else {
+        throw std::invalid_argument("Modelo de dipolo desconhecido: " + dipolemodel);
     }
 
-    return std::log(amp);
+    if (amp == 0.0) {
+        std::cerr << "Amp = 0 em x=" << x << std::endl;
+        return -1e30;
+    }
+
+    return std::log(std::abs(amp));
 }
 
 
 // -------------- lamnda_e --------------
 // pipeline é a seguinte: calcula sua amplitude, usa ela para o lambda e depois o lambda para o Rg e beta, que são os fatores de correção
 // fica mais leve calculando o lambda uma vez só.
-double calculate_lambda(double x, double Q2, const Meson& M)
+double calculate_lambda(double x, double Q2, const Meson& M, std::string dipolemodel)
 {
     const double h = 1e-4;
     double err;
     double y = -std::log(x);
 
+    DipoleAmplitude dipole(MZ_IPSAT);
+    dipole.EnableLookupTable();
 
     auto f_lnA = [&](double y_var) {
-        return lnA(y_var, Q2, M);
+        return lnA(y_var, Q2, M, dipolemodel, dipole);
     };
 
     double dlnA_dy = dfridr(f_lnA, y, h, err);
@@ -68,12 +93,12 @@ void debug_correc(void)
 {
     double x = 1e-4;
     double Q2 = 0.0;
-    const Meson& M = Jpsi_GLC;
+    const Meson& M = Jpsi_GLC_GBW;
 
     for (int i = 0; i < 120; ++i) {
         double xi = x + i * 1e-4; // varre x de 1e-4 a 1e-2
-        double amp = amplitude_GBW(xi, Q2, M, gbw);
-        double lambda_e = calculate_lambda(xi, Q2, M);
+        double amp = GBW::amplitude(xi, Q2, M, gbw);
+        double lambda_e = calculate_lambda(xi, Q2, M, "GBW");
         double Rg = RG(xi, Q2, lambda_e, M);
         double beta_val = beta(xi, Q2, lambda_e, M);
 

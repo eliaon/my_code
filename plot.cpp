@@ -7,8 +7,14 @@
 #include <string>
 #include <ctime>
 #include <Python.h>
+#include <filesystem>
+
 #include "matplotlib-cpp/matplotlibcpp.h"
 #include "utils.h"
+#include "bCGC.h"
+#include "GBW.h"
+#include "DGLAP.hpp"
+#include "ipsat.h"
 
 namespace plt = matplotlibcpp;
 
@@ -16,79 +22,13 @@ namespace plt = matplotlibcpp;
 
 // ---------- FUNÇÃO PARA PUXAR A STRING TIMESTAMP (HORÁRIO E DIA/MES/ANO AGORA)
 
-std::string timestamp(void)
-{
-    std::time_t now = std::time(nullptr);
-    std::tm* local = std::localtime(&now);
 
-    char buffer[32];
-    std::strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", local);
-    return std::string(buffer);
-}
-// ------------ LÊ CSV COM 2 COLUNAS, PARA N 
-void read_two_columns(
-    const std::string& filename,
-    std::vector<double>& x,
-    std::vector<double>& y)
-{
-    std::ifstream file(filename);
-    std::cout << "Reading file: " << filename << std::endl;
-    if(!file)
-        throw std::runtime_error("Cannot open file: " + filename);
 
-    std::string line;
 
-    std::getline(file,line); // header
 
-    while(std::getline(file,line))
-    {
-        if(line.empty()) continue;
 
-        std::stringstream ss(line);
-        std::string a,b;
 
-        std::getline(ss,a,',');
-        std::getline(ss,b,',');
 
-        x.push_back(std::stod(a));
-        y.push_back(std::stod(b));
-    }
-}
-
-// ------------ LÊ CSV'S COM 1 INDEPENDENTE E DUAS DEPENDENTES, IDEAL PARA COMPARAÇÕES
-// ------------- BOOSTED GAUSSIAN - GAUSSIAN LIGHT CONE
-
-void read_csv(
-    const std::string& filename,
-    std::vector<double>& x,
-    std::vector<double>& glc,
-    std::vector<double>& bg)
-{
-    std::ifstream file(filename);
-
-    if(!file)
-        throw std::runtime_error("Cannot open file: " + filename);
-
-    std::string line;
-
-    std::getline(file, line); // header
-    
-    while (std::getline(file, line))
-    {
-        if(line.empty()) continue;
-
-        std::stringstream ss(line);
-        std::string a,b,c;
-
-        std::getline(ss, a, ',');
-        std::getline(ss, b, ',');
-        std::getline(ss, c, ',');
-
-        x.push_back(std::stod(a));
-        glc.push_back(std::stod(b));
-        bg.push_back(std::stod(c));
-    }
-}
 
 // ------------- PLOTA CURVA PARA dσ/dt PARA UMA DADA ENERGIA EM GeV
 
@@ -201,89 +141,81 @@ void plot_dsigma_dt(std::string meson)
     plt::show();
 }
 
-// -------------- CARREGA SET DE VALORES DE CURVAS DE N
 
-bool load_set(
-    const std::string& xstr,
-    std::vector<double>& r2_ipsat,
-    std::vector<double>& N_ipsat,
-    std::vector<double>& r2_gbw,
-    std::vector<double>& N_gbw,
-    std::vector<double>& r2_iim,
-    std::vector<double>& N_iim)
-{
-    std::cout << "Loading x=" << xstr << std::endl;
-    read_two_columns("csv/N_ipsat_x=" + xstr + ".csv", r2_ipsat, N_ipsat);
-    read_two_columns("csv/N_GBW_x=" + xstr + ".csv",  r2_gbw,  N_gbw);
-    read_two_columns("csv/N_IIM_x=" + xstr + ".csv",  r2_iim,  N_iim);
-    if(r2_ipsat.empty() || r2_gbw.empty() || r2_iim.empty())
-{
-    std::cerr << "Empty dataset for x=" << xstr << std::endl;
-    return false;
-}
-return true;
-}
 
 // -------------- PLOTA AS CURVAS DE N
 
-void plot_N_models()
+void plot_N_models(const std::vector<std::pair<std::string,std::string>>& files, double x)
 {
-    
-    std::vector<std::string> xvals = {"1e-4","1e-2"};
+    plt::figure_size(700,500);
 
-    for(const auto& xstr : xvals)
+    for (const auto& [fname, label] : files)
     {
-        plt::figure_size(700,500);
+        std::vector<double> r2, N;
 
-        std::vector<double> r2_ipsat,N_ipsat;
-        std::vector<double> r2_gbw,N_gbw;
-        std::vector<double> r2_iim,N_iim;
+        std::ifstream fin(fname);
+        if (!fin.is_open()) {
+            std::cerr << "Erro ao abrir: " << fname << std::endl;
+            continue;
+        }
 
-        load_set(xstr,
-                 r2_ipsat,N_ipsat,
-                 r2_gbw,N_gbw,
-                 r2_iim,N_iim);
+        std::string line;
+        std::getline(fin, line); // pula header
 
-        plt::plot(r2_ipsat,N_ipsat, {{"label","IPsat"}});
-        plt::plot(r2_gbw,N_gbw, {{"label","GBW"},{"linestyle","--"}});
-        plt::plot(r2_iim,N_iim, {{"label","IIM"},{"linestyle",":"}});
+        while (std::getline(fin, line))
+        {
+            std::stringstream ss(line);
+            std::string val1, val2;
 
-        plt::title("x=" + xstr);
+            std::getline(ss, val1, ',');
+            std::getline(ss, val2, ',');
 
-        plt::xlim(0.0,100.0);
-        plt::ylim(0.0,1.2);
+            r2.push_back(std::stod(val1));
+            N.push_back(std::stod(val2));
+        }
 
-        plt::xlabel("$r^2$");
-        plt::ylabel("$N_p$");
-
-        plt::grid(true);
-        plt::legend();
-
-        std::string filename =
-            "plots/N/N_gbw_iim_ipsat_x=" + xstr + "_" + timestamp() + ".png";
-
-        plt::save(filename);
-        plt::show();
-        
+        plt::plot(r2, N, {{"label", label}});
     }
+
+    plt::xlabel("$r^2$");
+    plt::ylabel("$N_p$");
+
+    plt::title("Amplitude de dipolo $N_p(r^2)$ para diferentes modelos (x=" + doubleParaString(x) + ")");
+
+    plt::xlim(0.0001,100.0);
+    plt::ylim(0.0001,1.2);
+
+    PyRun_SimpleString( "import matplotlib.pyplot as plt\n"
+                        "plt.yscale('log')\n"
+                        "plt.xscale('log')\n"
+
+    );
+
+    plt::grid(true);
+    plt::legend();
+
+    std::string filename =
+        "plots/N/N_models_" + timestamp() + "_x=" + doubleParaString(x) + ".png";
+
+    plt::save(filename);
+    plt::show();
+}
+
+void compare_N_models(double x)
+{
+    std::vector<std::pair<std::string,std::string>> files = {
+        {IPSAT::N_csv(x), "IPsat"},
+        {bCGC::N_csv(x), "bCGC"},
+        {GBW::N_csv(x), "GBW"},
+        {DGLAP::N_csv(x), "DGLAP"}
+    };
+
+    plot_N_models(files, x);
 }
 
 // -------------- PLOTA CURVAS DE RAPIDEZ PARA UM SQRT S ESCOLHIDO
 
-std::string get_meson()
-{
-    std::cout << "Escreva o meson (Jpsi, phi): ";
-    std::string meson;
-    std::cin >> meson;
 
-    if (meson != "Jpsi" && meson != "phi")
-    {
-        std::cerr << "Meson inválido. Use 'Jpsi' ou 'phi'." << std::endl;
-        exit(1);
-    }
-
-    return meson;
-}
 
 void plot_rapidity()
 {
@@ -454,118 +386,9 @@ void plot_overlap()
 
 // ------------------ PLOT SEÇÕES DE CHOQUE INTEGRAIS
 
-void read_sigma_exp(
-    const std::string& filename,
-    std::vector<int>& dataset,
-    std::vector<double>& W,
-    std::vector<double>& sigma,
-    std::vector<double>& err)
-{
-    std::ifstream file(filename);
-    std::string line;
 
-    while (std::getline(file, line))
-    {
-        // remove espaços iniciais
-        line.erase(0, line.find_first_not_of(" \t"));
 
-        if (line.empty() || line[0] == '#')
-            continue;
-
-        std::vector<double> cols;
-
-        // --- tenta parsing como CSV ---
-        {
-            std::stringstream ss(line);
-            std::string token;
-
-            while (std::getline(ss, token, ','))
-            {
-                try {
-                    cols.push_back(std::stod(token));
-                }
-                catch (...) {
-                    // ignora tokens não numéricos (ex: "-")
-                }
-            }
-        }
-
-        // --- fallback: separação por espaço/tab ---
-        if (cols.size() < 3)
-        {
-            cols.clear();
-            std::stringstream ss(line);
-            std::string token;
-
-            while (ss >> token)
-            {
-                try {
-                    cols.push_back(std::stod(token));
-                }
-                catch (...) {
-                    // ignora lixo
-                }
-            }
-        }
-
-        if (cols.size() < 3)
-            continue;
-
-        // --- caso 1: formato simples ---
-        if (cols.size() == 3)
-        {
-            int d = 0;
-            dataset.push_back(d);
-            W.push_back(cols[0]);
-            sigma.push_back(cols[1]);
-            err.push_back(cols[2]);
-        }
-
-        // --- caso 2: erro assimétrico (4 colunas) ---
-        else if (cols.size() >= 4 && cols.size() < 8)
-        {
-            int d = 0;
-
-            double W_val = cols[0];
-            double s_val = cols[1];
-            double dy_minus = std::abs(cols[2]);
-            double dy_plus  = std::abs(cols[3]);
-
-            double e_val = 0.5 * (dy_minus + dy_plus);
-
-            dataset.push_back(d);
-            W.push_back(W_val);
-            sigma.push_back(s_val);
-            err.push_back(e_val);
-        }
-
-        // --- caso 3: HEPData completo ---
-        else if (cols.size() >= 8)
-        {
-            int d = static_cast<int>(cols[0]);
-
-            double W_val     = cols[1];
-            double sigma_val = cols[3];
-
-            double stat_p = cols[4];
-            double stat_m = std::abs(cols[5]);
-            double sys_p  = cols[6];
-            double sys_m  = std::abs(cols[7]);
-
-            double stat = 0.5 * (stat_p + stat_m);
-            double sys  = 0.5 * (sys_p + sys_m);
-
-            double err_val = std::sqrt(stat*stat + sys*sys);
-
-            dataset.push_back(d);
-            W.push_back(W_val);
-            sigma.push_back(sigma_val * 1000.0); // μb → nb
-            err.push_back(err_val * 1000.0);
-        }
-    }
-}
-
-void plot_sigma_Jpsi(std::string csv_file)
+void plot_sigma_Jpsi(std::string csv_file, std::string dipolemodel)
 {
     int Q2 = 0;
 
@@ -681,6 +504,7 @@ void plot_sigma_Jpsi(std::string csv_file)
     std::string out =
         "plots/sigma/" +
         plotname + "_" +
+        dipolemodel + "_" +
         timestamp() + ".png";
 
     std::string label = "Arquivo: " + plotname;
@@ -693,7 +517,7 @@ PyRun_SimpleString(
     plt::show();
 }
 
-void plot_sigma_phi(std::string csv)
+void plot_sigma_phi(std::string csv, std::string dipolemodel)
 {
     int Q2 = 0;
     std::string plotname = extrair_nome_base(csv);
@@ -774,6 +598,7 @@ read_sigma_exp(
     std::string out =
         "plots/sigma/" + plotname + "_" +
         std::to_string(Q2) + "_" +
+        dipolemodel + "_" +
         timestamp() + ".png";
 
 
@@ -787,13 +612,519 @@ PyRun_SimpleString(
     plt::show();
 }
 
-void plot_sigma(std::string meson, std::string csv)
+
+
+
+
+void plot_sigma(std::string meson, std::string csv, std::string dipolemodel)
 {
     if(meson == "Jpsi")
-        plot_sigma_Jpsi(csv);
+        plot_sigma_Jpsi(csv, dipolemodel);
     else if(meson == "phi")
-        plot_sigma_phi(csv);
+        plot_sigma_phi(csv, dipolemodel);
     else
         throw std::runtime_error("Meson desconhecido: " + meson);
 }
+
+void plot_sigma_Jpsi_gammaPb_GBW(std::string csv_file)
+{
+    std::vector<double> W, sigma_GLC, sigma_BG;
+    read_csv(csv_file, W, sigma_GLC, sigma_BG);
+
+    plt::clf();
+
+    // =========================
+    // Dados experimentais
+    // =========================
+    std::vector<double> W_CMS, sigma_CMS, error_CMS;
+    read_xyscan_csv("csv/expdata/sigma/sigma_psi_gammaPb_CMS.csv",
+                    W_CMS, sigma_CMS, error_CMS);
+
+    plt::errorbar(W_CMS, sigma_CMS, error_CMS,
+        {{"fmt","o"}, {"color","blue"}, {"label","CMS"}});// CMS Collaboration. Probing Small Bjorken-x Nuclear Gluonic Structure via
+                                                        //Coherent J/ψ Photoproduction in Ultraperipheral Pb-Pb Collisions at √sNN = 5.02 TeV.
+                                                        //Phys. Rev. Lett., American Physical Society, 2023.
+
+    std::vector<double> W_ALICE_2023, sigma_ALICE_2023, error_ALICE_2023;
+    read_xyscan_csv("csv/expdata/sigma/sigma_psi_gammaPb_ALICE_2023.csv",  
+                    W_ALICE_2023, sigma_ALICE_2023, error_ALICE_2023);
+
+    plt::errorbar(W_ALICE_2023, sigma_ALICE_2023, error_ALICE_2023,      //ALICE Collaboration. Energy dependence of coherent photonuclear production of
+                                                                        //J/ψ mesons in ultra-peripheral Pb-Pb collisions at √sNN = 5.02 TeV. 2023. 
+        {{"fmt","s"}, {"color","green"}, {"label","ALICE(2023)"}});
+
+    std::vector<double> W_ALICE_2024, sigma_ALICE_2024, error_ALICE_2024;
+    read_xyscan_csv("csv/expdata/sigma/sigma_psi_gammaPb_ALICE_2024.csv",
+                    W_ALICE_2024, sigma_ALICE_2024, error_ALICE_2024);  // SHATAT, A. Charmonium photoproduction in Pb-Pb collisions with nuclear overlap
+                                                                        //measured with ALICE at the LHC. Tese (Theses) — Université Paris-Saclay, 2024. https://theses.hal.science/tel-04797642
+    
+    plt::errorbar(W_ALICE_2024, sigma_ALICE_2024, error_ALICE_2024,
+        {{"fmt","^"}, {"color","orange"}, {"label","ALICE(2024)"}});
+
+    // =========================
+    // Banda sombreada
+    // =========================
+
+    std::vector<double> sigma_min(W.size()), sigma_max(W.size());
+
+for (size_t i = 0; i < W.size(); ++i) {
+    sigma_min[i] = std::min(sigma_GLC[i], sigma_BG[i]);
+    sigma_max[i] = std::max(sigma_GLC[i], sigma_BG[i]);
+}
+
+// converter para string Python
+std::string W_py   = vec_to_pylist(W);
+std::string min_py = vec_to_pylist(sigma_min);
+std::string max_py = vec_to_pylist(sigma_max);
+
+// plot banda
+std::string cmd =
+    "import matplotlib.pyplot as plt\n"
+    "W = " + W_py + "\n"
+    "y1 = " + min_py + "\n"
+    "y2 = " + max_py + "\n"
+    "plt.fill_between(W, y1, y2, alpha=0.3, color='orange', label='GBW band')\n";
+
+PyRun_SimpleString(cmd.c_str());
+
+
+    // =========================
+    // Estética
+    // =========================
+
+    plt::xlabel("W (GeV)");
+    plt::ylabel("σ(γ Pb → J/ψ Pb) [nb]");
+    plt::title("Produção exclusiva de J/ψ em γ-Pb (GBW)");
+
+    plt::xlim(25,1000);
+    plt::ylim(1e3,1e5);
+
+    plt::legend();
+
+    PyRun_SimpleString(
+        "ax = plt.gca()\n"
+        "ax.set_xscale('log')\n"
+        "ax.set_yscale('log')\n"
+        "ax.grid(True)\n"
+    );
+
+    std::filesystem::create_directories("plots/sigma");
+    plt::save("plots/sigma/Jpsi_gammaPb_GBW"+ timestamp() + ".png");
+
+    plt::show();
+}
+
+void plot_sigma_phi_gammaPb_GBW(std::string csv_file)
+{
+    std::vector<double> W, sigma_GLC, sigma_BG;
+
+    read_csv(csv_file, W, sigma_GLC, sigma_BG);
+
+    std::cout << "DEBUG J/psi:\n";
+for (int i = 0; i < 5; ++i) {
+    std::cout << W[i] << "  "
+              << sigma_GLC[i] << "  "
+              << sigma_BG[i] << std::endl;
+}
+double minv = 1e100, maxv = 0;
+
+for (double v : sigma_GLC) {
+    if (std::isfinite(v) && v > 0) {
+        minv = std::min(minv, v);
+        maxv = std::max(maxv, v);
+    }
+}
+
+std::cout << "min = " << minv << "  max = " << maxv << std::endl;
+
+    plt::clf();
+    plt::figure_size(800,600);
+
+    plt::named_plot("GBW (GLC)", W, sigma_GLC, "-");
+    plt::named_plot("GBW (Boosted Gaussian)", W, sigma_BG, "--");
+
+    plt::xlabel("W (GeV)");
+    plt::ylabel("σ(γ Pb → φ Pb) [nb]");
+    plt::title("Produção exclusiva de φ em γ-Pb (GBW)");
+
+    plt::legend();
+
+    PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gcf()\n"   // garante que usa a figura atual
+    "plt.xscale('log')\n"
+    "plt.yscale('log')\n"
+    "plt.grid(True)\n"
+);
+
+    std::filesystem::create_directories("plots/sigma");
+    plt::save("plots/sigma/phi_gammaPb_GBW_"+ timestamp() + ".png");
+
+    plt::show();
+}
+
+void create_TA_b_csv(std::string meson)
+{
+    std::vector<double> W, TA_GLC, TA_BG;
+
+    read_csv("csv/" + meson + "_TA_b.csv", W, TA_GLC, TA_BG);
+
+    std::ofstream out("csv/" + meson + "_TA_b_processed.csv");
+    out << "W,TA_GLC,TA_BG\n";
+    for(size_t i=0;i<W.size();++i)
+        out << W[i] << "," << TA_GLC[i] << "," << TA_BG[i] << "\n";
+    out.close();
+}
+
+void plot_TA_b(){
+    double R = 6.62*5.07; // fm para GeV^-1
+    double a = 0.546*5.07; // fm para GeV^-1
+    double rho0 = 0.1603/std::pow(5.07, 3); // fm^-3 para GeV^3 
+
+    TA_Table table = precompute_TA(200, 50.0, R, a, rho0); // pré-calcula T_A(b) para Pb-208
+
+    std::vector<double> b = table.b_vals;
+    std::vector<double> TA = table.TA_vals;
+
+    plt::figure_size(800,600);
+    plt::plot(b, TA, {{"label","T_A(b)"}});
+    plt::xlabel("b (GeV^-1)");
+    plt::ylabel("T_A(b) (GeV^2)");
+    plt::title("Função de perfil nuclear T_A(b) para Pb-208");
+    plt::grid(true);
+    plt::legend();
+    plt::save("plots/TA_b(Pb-208)_" + timestamp() + ".png");
+    plt::show();
+    
+}
+
+
+void plot_rapidez_PbPb_Jpsi(std::string filename, double sqrt_s)
+{
+    std::vector<double> Y, rap_GLC, rap_BG;
+
+    read_csv(filename, Y, rap_GLC, rap_BG);
+
+    plt::figure_size(800,600);
+
+    plt::plot(Y, rap_GLC,
+        {{"label","GLC"},
+         {"color","red"},
+         {"linestyle","-"},
+         {"linewidth","1.8"}});
+
+    plt::plot(Y, rap_BG,
+        {{"label","BG"},
+         {"color","red"},
+         {"linestyle","--"},
+         {"linewidth","1.2"}});
+
+    plt::xlim(-8,8);
+
+    plt::xlabel("Y");
+    plt::ylabel("dσ/dY [nb]");
+
+    double sqrt_s_TeV = sqrt_s / 1e3;
+
+    std::stringstream title;
+    title << "Distribuição de rapidez do $J/\\psi$ em Pb-Pb a " << sqrt_s_TeV << " TeV";
+
+    plt::title(title.str());
+
+    plt::grid(true);
+    plt::legend();
+
+
+    std::string out =
+        "plots/Rapidez/PbPb-Jpsi_rapidez_+" + doubleParaString(sqrt_s_TeV, 3) + "TeV_" +
+        timestamp() + ".png";
+
+    plt::save(out);
+    plt::show();
+}
+
+void plot_rapidez_PbPb_phi(std::string csv, double sqrt_s)
+{
+    std::vector<double> Y, rap_GLC, rap_BG;
+
+    std::vector<double> Y_GBW, rap_GLC_GBW, rap_BG_GBW;
+
+    read_csv("csv/phi_rapidez_PbPb_5.36e+03GeV.csv", Y_GBW, rap_GLC_GBW, rap_BG_GBW);
+    read_csv(csv, Y, rap_GLC, rap_BG);
+
+    plt::figure_size(800,600);
+
+    // --- dados experimentais ---
+    std::vector<double> y, dsigma_dy, error;
+
+    if(sqrt_s == 5.36e3) // só tem dados para 5.36 TeV
+    {
+    read_rapidity_hepdata(
+        "csv/expdata/Rapidez/rapidity_PbPb-phi_5360TeV.csv", // Observation of coherent ϕ(1020) meson photoproduction
+        y,                                                   //    in ultraperipheral PbPb collisions at √sNN = 5.36 TeV
+        dsigma_dy,                                           //http://dx.doi.org/10.1103/2ssw-wwyy
+        error
+    );
+
+
+    plt::errorbar(y, dsigma_dy, error,
+        {{"fmt","o"},
+         {"color","blue"},
+         {"label","CMS (2025)"}});
+
+        plt::plot(Y_GBW, rap_GLC_GBW,
+        {{"label","GLC GBW"},
+         {"color","orange"},
+         {"linestyle","-"},
+         {"linewidth","1.8"}});
+
+    plt::plot(Y_GBW, rap_BG_GBW,
+        {{"label","BG GBW"},
+         {"color","orange"},
+         {"linestyle","--"},
+         {"linewidth","1.2"}});
+    }
+    plt::plot(Y, rap_GLC,
+        {{"label","GLC GBW_fc"},
+         {"color","red"},
+         {"linestyle","-"},
+         {"linewidth","1.8"}});
+
+    plt::plot(Y, rap_BG,
+        {{"label","BG GBW_fc"},
+         {"color","red"},
+         {"linestyle","--"},
+         {"linewidth","1.2"}});
+
+    
+
+    plt::ylim(10,130);
+    plt::xlim(0.0,1.5);
+
+    PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gcf()\n"   // garante que usa a figura atual
+    "plt.yscale('log')\n"
+    "plt.grid(True)\n"
+);
+
+    plt::xlabel("Y");
+    plt::ylabel("dσ/dY [mb]");
+
+    double sqrt_s_TeV = sqrt_s / 1e3;
+    std::stringstream title;
+    title << "Distribuição de rapidez do $\\phi$ em Pb-Pb a " << sqrt_s_TeV << " TeV";
+
+    plt::title(title.str());
+
+    plt::grid(true);
+    plt::legend();
+
+    std::string out =
+        "plots/Rapidez/PbPb-phi_rapidez_+" + doubleParaString(sqrt_s_TeV, 3) + "TeV_" +
+        timestamp() + ".png";
+
+    plt::save(out);
+    plt::show();
+}
+
+void plot_N_dglap(std::string csv_file1, std::string csv_file2)
+{
+    std::vector<double> r2_x1, N_dglap_x1;
+    std::vector<double> r2_x2, N_dglap_x2;
+
+    read_two_columns(csv_file1, r2_x1, N_dglap_x1);
+    read_two_columns(csv_file2, r2_x2, N_dglap_x2);
+
+
+    plt::figure_size(800,600);
+    plt::plot(r2_x1, N_dglap_x1, {{"label","N(r^2) DGLAP x=1e-4"}});
+    plt::plot(r2_x2, N_dglap_x2, {{"label","N(r^2) DGLAP x=1e-2"}});
+
+    PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gcf()\n"   // garante que usa a figura atual
+    "plt.xscale('log')\n"
+    "plt.yscale('log')\n"
+    );
+
+    plt::xlim(1e-3,100.0);
+    plt::ylim(1e-4,1.2);
+
+    plt::xlabel("$r^2$");
+    plt::ylabel("$N_p$");
+
+    plt::title("Função de dipolo N(r^2) do modelo DGLAP");
+
+    plt::grid(true);
+    plt::legend();
+
+    std::string out =
+        "plots/N/N_dglap_" +
+        timestamp() + ".png";
+
+    plt::save(out);
+    plt::show();
+}
+
+void plot_overlap_fc(std::string csv_file, std::string csv_file_fc, std::string meson)
+{
+    std::vector<double> r1, r2;
+    std::vector<double> overlap_BG, overlap_GLC;
+    std::vector<double> overlap_BG_fc, overlap_GLC_fc;
+
+    read_csv(csv_file, r1, overlap_BG, overlap_GLC);
+    read_csv(csv_file_fc, r2, overlap_BG_fc, overlap_GLC_fc);
+
+    if(r1.empty() || r2.empty()) {
+    throw std::runtime_error("Vetores vazios — falha no read_csv");
+}
+if(meson == "Jpsi") {
+    // -------- SEM FC --------
+
+plt::plot(r1, overlap_BG, {{"label","BG"}});
+plt::plot(r1, overlap_GLC, {{"label","GLC"}});
+
+PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gca().set_xscale('log')\n"
+);
+
+plt::title("Sem fator de correção");
+plt::xlabel("$r$ [fm]");
+plt::ylabel("Overlap $r \\Psi_V \\Psi_{\\gamma}$");
+
+
+plt::xlim(0.0001, 1.0);
+plt::ylim(0.0, 0.025);
+
+plt::legend();
+plt::grid(true);
+
+
+
+plt::save("plots/overlap/sem_fc_" + meson + "_" + timestamp() + ".png");
+
+// -------- COM FC --------
+plt::figure();
+
+plt::plot(r2, overlap_BG_fc, {{"label","BG (fc)"}});
+plt::plot(r2, overlap_GLC_fc, {{"label","GLC (fc)"}});
+
+PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gca().set_xscale('log')\n"
+);
+
+plt::title("Com fator de correção");
+plt::xlabel("$r$ [fm]");
+plt::ylabel("Overlap $r \\Psi_V \\Psi_{\\gamma}$");
+plt::legend();
+plt::grid(true);
+
+plt::xlim(0.0001, 1.0);
+plt::ylim(0.0, 0.025);
+
+
+plt::save("plots/overlap/com_fc_" + meson + "_" + timestamp() + ".png");
+
+plt::show();
+}
+else if(meson == "phi") {
+    // -------- SEM FC --------
+plt::figure();
+
+plt::plot(r1, overlap_BG, {{"label","BG"}});
+plt::plot(r1, overlap_GLC, {{"label","GLC"}});
+PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gca().set_xscale('log')\n"
+);
+
+plt::title("Sem fator de correção");
+plt::xlabel("$r$ [fm]");
+plt::xlim(0.01, 3.0);
+plt::ylim(0.0, 0.01);
+plt::ylabel("Overlap $r \\Psi_V \\Psi_{\\gamma}$");
+
+
+plt::legend();
+plt::grid(true);
+
+plt::save("plots/overlap/sem_fc_" + meson + "_" + timestamp() + ".png");
+
+// -------- COM FC --------
+plt::figure();
+
+plt::plot(r2, overlap_BG_fc, {{"label","BG (fc)"}});
+plt::plot(r2, overlap_GLC_fc, {{"label","GLC (fc)"}});
+
+PyRun_SimpleString(
+    "import matplotlib.pyplot as plt\n"
+    "plt.gca().set_xscale('log')\n"
+);
+plt::title("Com fator de correção");
+plt::xlabel("$r$ [fm]");
+plt::ylabel("Overlap $r \\Psi_V \\Psi_{\\gamma}$");
+plt::xlim(0.01, 3.0);
+plt::ylim(0.0, 0.01);
+
+
+plt::legend();
+plt::grid(true);
+
+plt::save("plots/overlap/com_fc_" + meson + "_" + timestamp() + ".png");
+
+plt::show();
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

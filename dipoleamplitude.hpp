@@ -10,7 +10,7 @@
  *
  * Questions and comments: Heikki Mäntysaari <heikki.mantysaari@jyu.fi>
  */
-
+#pragma once
 #include "dglap_cpp/AlphaStrong.h"
 #include "dglap_cpp/EvolutionLO_nocoupling.h"
 
@@ -82,7 +82,7 @@ class DipoleAmplitude
         bool GetSaturation() { return saturation; }
         void SetSaturation(bool s) { saturation = s; }
     
-    private:
+    public:
         EvolutionLO_gluon *cppdglap;
         AlphaStrong *alphas;
         bool saturation;   // True for ipsat, false for ipnonsat

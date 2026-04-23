@@ -1,23 +1,27 @@
+#include <chrono>
+#include <omp.h>
+#include <fstream>
+#include <sstream>
+
 #include "integration.hpp"
 #include "dipoleamplitude.hpp"
 #include "dglap_cpp/AlphaStrong.h"
 #include "dglap_cpp/EvolutionLO_nocoupling.h"
-#include <chrono>
-#include <omp.h>
 #include "plot.h"
 #include "utils.h"
 #include "ctes.h"
 #include "wavefunctions.h"
 #include "correcs.h"
 #include "boost/math/special_functions/bessel.hpp"
-#include <fstream>
-#include <sstream>
+
+#include "ipsat.h"
 
 using namespace MZ_ipsat;
 
+namespace IPSAT{
 
 // ----------------- função de calcular a seção de choque de dipolo -----------------
-double sigma_dipolo_ipsat(double r, double x, double Delta, DipoleAmplitude& dipole)
+double sigma_dipolo(double r, double x, double Delta, DipoleAmplitude& dipole)
 {
     auto N_b = [&](double b) {
         return 2.0 * M_PI * b * dipole.N(r, x, b) * boost::math::cyl_bessel_j(0, Delta * b);
@@ -48,7 +52,7 @@ void csv_sigmaqq(void)
             {
                 double frac = (double)i / (Npoints - 1);
                 double r    = rmin * std::pow(rmax / rmin, frac); // escala log
-                double sigma = sigma_dipolo_ipsat(r, x, 0.0, dipole);
+                double sigma = sigma_dipolo(r, x, 0.0, dipole);
                 results[i]  = {r * 0.1973, sigma * 0.3894}; // converte r para fm e sigma para mb
             }
         }
@@ -79,19 +83,11 @@ void dump_curve_N(const std::string& fname, double x)
     }
 }
 
-void N_ipsat_csv(void){
-    for(double x : {1e-4, 1e-3, 1e-2})
-    {
-        std::string fname = "csv/N_ipsat_x=" + std::to_string(x) + ".csv";
-        dump_curve_N(fname, x);
-        std::cout << "Arquivo '" << fname << "' gerado." << std::endl;
-    }
-}
 
 
 
 //----------- amplitude -----------
-double amplitude_ipsat(double x, double Delta, double Q2, const Meson& M,
+double amplitude(double x, double Delta, double Q2, const Meson& M,
                  int Nr, int Nz,
                  double rmin, double rmax)
 {
@@ -99,7 +95,7 @@ double amplitude_ipsat(double x, double Delta, double Q2, const Meson& M,
     dipole.EnableLookupTable();
     auto fr = [&](double r) {
         double Ov = overlap_r(r, Q2, M, Nz);
-        double sigma_qq = sigma_dipolo_ipsat(r, x, Delta, dipole);
+        double sigma_qq = sigma_dipolo(r, x, Delta, dipole);
         return 0.5 * r * Ov * sigma_qq; // r de d²r = 2π r dr
     };
     double Ir = integrate_simpson(fr, rmin, rmax, Nr);
@@ -113,8 +109,8 @@ double dsigma_dt(double x, double Q2, const Meson& M, double t,
                  double rmin, double rmax)
 {
     double Delta = std::sqrt(t);
-    double amp = amplitude_ipsat(x, Delta, Q2, M, Nr, Nz, rmin, rmax);
-    double lambda_e = calculate_lambda(x, Q2, M);
+    double amp = amplitude(x, Delta, Q2, M, Nr, Nz, rmin, rmax);
+    double lambda_e = calculate_lambda(x, Q2, M, "ipsat");
     double Rg_val = RG(x, Q2, lambda_e, M);
     double beta_val = beta(x, Q2, lambda_e, M);
     return ((amp * amp) / (16.0 * M_PI )) * Rg_val * Rg_val * (1.0 + beta_val * beta_val);
@@ -122,7 +118,7 @@ double dsigma_dt(double x, double Q2, const Meson& M, double t,
 
 // ----------------- seção de choque total sigma(x) a partir de dsigma/dt em t=0 e B -----------------
 
-double sigma_ipsat_slope(double x, double Q2, const Meson& M,
+double sigma_slope(double x, double Q2, const Meson& M,
                  int Nr, int Nz, 
                  double rmin, double rmax)
 {
@@ -132,7 +128,7 @@ double sigma_ipsat_slope(double x, double Q2, const Meson& M,
 }
 
 // ----------------- integrando em t -----------------    
-double sigma_ipsat_integrado(double x, double Q2, const Meson& M,
+double sigma_integrado(double x, double Q2, const Meson& M,
                  int Nr, int Nz, 
                  double rmin, double rmax)
 {
@@ -150,7 +146,7 @@ void dsigma_dt_csv(double W, const Meson& M_GLC)
 {
     double x = W_to_x(W, M_GLC);
 
-    const Meson& M_BG  = meson_models.find(M_GLC.meson)->second.M_BG; //pega o bg correspondente ao meson escolhido
+    const Meson& M_BG  = meson_modelsipsat.find(M_GLC.meson)->second.M_BG; //pega o bg correspondente ao meson escolhido
 
     double Q2 = 0.0;
     std::string W_str = doubleParaString(W, 0);
@@ -180,7 +176,7 @@ void dsigma_dt_csv(double W, const Meson& M_GLC)
 // ----------------- função para gerar os csvs de dsigma/dt para os W escolhidos ---------- 
 void dsigma_dump(void)
 {
-    const Meson M_GLC = input_meson(); //importa o glc do meson escolhido
+    const Meson M_GLC = input_meson("ipsat"); //importa o glc do meson escolhido
 
     for(double W : {70.0}){
         dsigma_dt_csv(W, M_GLC);
@@ -188,5 +184,52 @@ void dsigma_dump(void)
   
 }
 
+void sigma_integrado_csv(void)
+{
+    const Meson M_GLC = input_meson("ipsat"); //importa o glc do meson escolhido
+
+    
+
+    std::string filename = "csv/" + M_GLC.meson + "_sigma_ipsat_integrado.csv";
+    std::ofstream fout(filename);
+    fout << "W,sigma_integrado\n";
+
+    for(double W : {70.0, 200.0, 500.0, 1000.0, 2000.0}){
+        double x = W_to_x(W, M_GLC);
+        double Q2 = 0.0;
+        double sigma_int = sigma_integrado(x, Q2, M_GLC, 600, 200, 1e-4, 10.0) * GeV2_to_nb; // converte para nb
+        cout << W << "," << sigma_int << "\n";
+        fout << W << "," << sigma_int << "\n";
+    }
+    fout.close();
+    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+
+    plot_sigma(M_GLC.meson, filename, "ipsat_integrado");
+}
+
+string N_csv(double x)
+{
+    std::string filename = "csv/N_ipsat_x=" + doubleParaString(x) + ".csv";
+    std::ofstream fout(filename);
+    fout << "r,N\n";
+
+    DipoleAmplitude dipole(MZ_IPSAT);
+
+    const int Npoints = 5000;
+    double rmin = 1e-4, rmax = 10.0;
+
+    for (int i = 0; i < Npoints; ++i)
+    {
+        double frac = (double)i / (Npoints - 1);
+        double r = rmin * std::pow(rmax / rmin, frac)*CFAC; // escala log
+        double N_val = dipole.N(r, x, 0.0); // exemplo para x=1e-4 e x0=1e-2
+        fout << r * r << "," << N_val << "\n"; // converte r para fm
+    }
+    return filename;
+}
+
+
+
+}
 
 

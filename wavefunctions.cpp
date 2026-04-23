@@ -8,6 +8,8 @@
 #include <fstream>
 #include <iostream>
 #include "integration.hpp"
+#include "correcs.h"
+#include "plot.h"
 
 
 
@@ -151,10 +153,10 @@ void overlap_csv(void)
     if (meson_input == "jpsi") meson_input = "Jpsi";
     if (meson_input == "Phi")  meson_input = "phi";
 
-    auto it = meson_models.find(meson_input);
-    if (it == meson_models.end()) {
+    auto it = meson_modelsGBW.find(meson_input);
+    if (it == meson_modelsGBW.end()) {
         std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
-        it = meson_models.find("Jpsi");
+        it = meson_modelsGBW.find("Jpsi");
     }
 
     const Meson& M_GLC = it->second.M_GLC;
@@ -179,4 +181,49 @@ void overlap_csv(void)
     }
     fout.close();
     std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+}
+
+void overlap_csv_fc(void){
+    const Meson &M_GLC = input_meson("GBW");
+    const Meson &M_BG = meson_modelsGBW.find(M_GLC.meson)->second.M_BG;
+
+    int Nz = 200;
+    std::string filename = "csv/" + M_GLC.meson + "_overlap_r.csv";
+    std::ofstream fout(filename);
+    fout << "r,overlap_GLC,overlap_BG\n";
+    const int Npoints = 1000;
+    double rmin = 1e-4, rmax = 20.0;
+    double Q2 = 0.0;
+
+    for (int i = 0; i < Npoints; ++i) {
+        double frac = static_cast<double>(i) / (Npoints - 1);
+        double r = rmin * pow(rmax / rmin, frac);
+
+        double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz);
+        double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz);
+
+        fout << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
+    }
+    fout.close();
+    std::cout << "Arquivo '" << filename << "' gerado." << std::endl;
+
+    std::string filename_fc = "csv/" + M_GLC.meson + "_overlap_r_fc.csv";
+    std::ofstream fout_fc(filename_fc);
+    fout_fc << "r,overlap_GLC,overlap_BG\n";
+    for (int i = 0; i < Npoints; ++i) {
+        double frac = static_cast<double>(i) / (Npoints - 1);
+        double r = rmin * pow(rmax / rmin, frac);
+
+        double fc = f_c(r,-0.979599, 0.403569, 6.8); // B=0.979599, omega=0.403569, R=6.8 fm
+        double sqrt_fc = std::sqrt(fc); // fator de correção da função de onda do fóton
+
+        double overlap_glc = 0.5*r*overlap_r(r, Q2, M_GLC, Nz) * sqrt_fc;
+        double overlap_bg  = 0.5*r*overlap_r(r, Q2, M_BG, Nz) * sqrt_fc;
+
+        fout_fc << r/CFAC << "," << overlap_glc << "," << overlap_bg << "\n";
+    }
+    fout_fc.close();
+    std::cout << "Arquivo '" << filename_fc << "' gerado." << std::endl;
+
+    plot_overlap_fc(filename, filename_fc, M_GLC.meson);
 }

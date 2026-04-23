@@ -1,30 +1,30 @@
 #include <cmath>
+#include <iostream>
+#include <fstream>
+#include <chrono>
+
 #include "ctes.h"
 #include "utils.h"
+#include "plot.h"
+#include "correcs.h"
+#include "bCGC.h"
+#include "wavefunctions.h"
 #include "integration.hpp"
 
-
+namespace bCGC {
 // ------------ calculo do N -----------
- 
-
- 
-double QS_bCGC( double x, double b, double x0)
+double QS( double x, double b)
 {
-    double B_CGC = 7.5; // GeV^-2
-    double Qs2 = std::pow(x0/x, lambda/2.0)*
+    double Qs = std::pow(x_0/x, lambda/2.0)*
                 std::pow(std::exp(-b*b/(2*B_CGC)), 1.0/(2.0*gamma_s));
-    return Qs2;
+    return Qs;
 }
  
 
- double N_IIM(double r,  double x,  double x0)
+ double N_IIM(double r,  double x)
 {
-    const double lambda_iim = 0.119;
-    const double gamma_s = 0.46;     // anomalous dimension
-    const double kappa = 9.9;
-    const double N_0 = 0.558;
 
-    double Qs  = std::pow(x0/x, lambda_iim/2.0);
+    double Qs  = std::pow(x_0/x, lambda/2.0);
     double rQs = r * Qs;
 
     rQs = std::max(rQs, 1e-12);      // proteção numérica
@@ -36,7 +36,7 @@ double QS_bCGC( double x, double b, double x0)
         double exp =
             2.0 * (gamma_s +
             std::log(2.0/rQs) /
-            (kappa * lambda_iim * Lx));
+            (kappa * lambda * Lx));
 
         return N_0 * std::pow(rQs/2.0, exp)*std::pow(1.0-x, 5.26);
 
@@ -54,11 +54,9 @@ double QS_bCGC( double x, double b, double x0)
     }
 }
 
-double prof_bCGC(double r, double x, double b, double x0)
+double prof(double r, double x, double b)
 {
-    double Qs = QS_bCGC(x, b, x0);
-    const double lambda_iim = 0.119;
-    const double gamma_s = 0.46;     // anomalous dimension
+    double Qs = QS(x, b);
     const double kappa = 9.9;
     const double N_0 = 0.558;
 
@@ -73,10 +71,10 @@ double prof_bCGC(double r, double x, double b, double x0)
         double expnt =
             2.0 * (gamma_s +
             std::log(2.0/rQs) /
-            (kappa * lambda_iim * Lx));
+            (kappa * lambda * Lx));
 
         double N_b = N_0 * std::pow(rQs/2.0, expnt);
-        return N_b;
+        return N_b * std::pow(1.0-x, 5.26);
 
     } else {
 
@@ -93,11 +91,124 @@ double prof_bCGC(double r, double x, double b, double x0)
     }
 }
 
-double sigma_qq_bCGC(double r, double x, double x_0)
+double sigma_qq(double r, double x)
 {
     auto integrand = [&](double b) {
-        return b * prof_bCGC(r, x, b, x_0);
+        return b * prof(r, x, b);
     };
     double bmax = 10.0; // Limite superior para a integração em b
     return 4.0 * M_PI * integrate_simpson(integrand, 0.0, bmax, 200);
 }
+
+std::string N_csv(double x)
+{
+    std::string filename = "csv/N_bCGC_x=" + doubleParaString(x) + ".csv";
+    std::ofstream fout(filename);
+    fout << "r,N\n";
+
+    const int Npoints = 5000;
+    double rmin = 1e-4, rmax = 10.0;
+
+    for (int i = 0; i < Npoints; ++i)
+    {
+        double frac = (double)i / (Npoints - 1);
+        double r = rmin * std::pow(rmax / rmin, frac)*CFAC; // escala log
+        double N_val = N_IIM(r, x); // exemplo para x=1e-4 e x0=1e-2
+        fout << r * r << "," << N_val << "\n"; // converte r para fm
+    }
+    return filename;
+}
+
+
+double amplitude_p(double x, double Q2, const Meson& M)
+{
+    auto amp_r = [x, Q2, &M](double r) {
+        double Ov = sigma_qq(r, x) * overlap_r(r, Q2, M);
+        return r * Ov;
+    };
+    double amp = 0.5 * integrate_simpson(amp_r, 1e-4, 10.0, 300);
+    return amp;
+}
+
+double sigma_p(double x, double Q2, const Meson& M)
+{
+    double amp = amplitude_p(x, Q2, M);
+    double slope = B_slope(x, Q2, M);
+    double lambda_e = calculate_lambda(x, Q2, M, "bCGC");
+    double R_g = RG(x, Q2, lambda_e, M);
+    double beta_corr = beta(x, Q2, lambda_e, M);
+    double A2 = (amp * amp) / (16.0 * M_PI * slope);
+    //double correction_factor = R_g * R_g * (1.0 + beta_corr * beta_corr);
+    return  A2*R_g*R_g; // B=4.0 GeV^-2 é um valor típico para o slope
+}
+
+std::string sigma_p_csv()
+{
+    double Q2 = 0.0;
+    const Meson& M_GLC = input_meson("GBW");
+    const Meson& M_BG  = meson_modelsGBW.find(M_GLC.meson)->second.M_BG;
+
+    std::string filename = "csv/" + M_GLC.meson + "_sigma_gammap_bCGC.csv";
+    std::ofstream fout(filename);
+
+    double Wmin = x_to_W(0.01, M_GLC);
+    double Wmax = 3e+3;
+
+    const int Nw = 100;
+
+    std::vector<double> W_vals(Nw), sigma_GLC_vals(Nw), sigma_BG_vals(Nw);
+
+    using clock = std::chrono::steady_clock;
+    auto start = clock::now();
+
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < Nw; ++i) {
+        double frac = static_cast<double>(i) / (Nw - 1);
+        double W = Wmin * pow(Wmax / Wmin, frac);
+        double x = (M_GLC.MV * M_GLC.MV) / (W * W);
+
+        double s_GLC = sigma_p(x, Q2, M_GLC);
+        double s_BG  = sigma_p(x, Q2, M_BG);
+
+        W_vals[i]         = W;
+        sigma_GLC_vals[i] = s_GLC * GeV2_to_nb;
+        sigma_BG_vals[i]  = s_BG  * GeV2_to_nb;
+    }
+
+    auto end = clock::now();
+
+    fout << "W,sigma_GLC,sigma_BG\n";
+
+    for (int i = 0; i < Nw; ++i) {
+        fout << W_vals[i] << "," 
+             << sigma_GLC_vals[i] << "," 
+             << sigma_BG_vals[i] << "\n";
+    }
+
+    fout.close();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Tempo de execução: " << duration << " ms\n";
+    std::cout << "Arquivo '" << filename << "' gerado com sucesso.\n";
+
+    return filename;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+} // namespace bCGC
