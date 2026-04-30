@@ -3,14 +3,15 @@
 
 #include <chrono>
 #include <omp.h>
+#include <fstream>
 
 #include "plot.h"
 #include "utils.h"
 #include "ctes.h"
 #include "wavefunctions.h"
-#include "fstream"
 #include "correcs.h"
 #include "integration.hpp"
+#include "ResolveDGLAP.hpp"
 
 #include "dipoleamplitude.hpp"
 #include "dglap_cpp/AlphaStrong.h"
@@ -19,16 +20,18 @@
 using namespace MZ_ipsat;
 
 
-namespace DGLAP{
+namespace dipole_DGLAP{
 // --------------------- DIPOLO DGLAP ---------------------
 
 double N_p(double r, double x, DipoleAmplitude& dipole)
 {
-    double musqrd = dipole.C/(r*r) + dipole.GetMu0() * dipole.GetMu0();
-    
+    double mu0sqrd = 1.85;
+    double C = 0.29;
+    //double musqrd = dipole.C/(r*r) + dipole.GetMu0() * dipole.GetMu0();
+    double musqrd = mu0sqrd / (1 - std::exp(-mu0sqrd * r * r / C));
 
-    double alpha_S = dipole.Alphas(std::sqrt(musqrd));
-    double xg = dipole.xg(x, musqrd);
+    double alpha_S = DGLAP::alpha_s(musqrd);
+    double xg = DGLAP::xg(x, musqrd);
 
     double alphasxg = alpha_S * xg;
 
@@ -143,7 +146,7 @@ void N_p_csv()
     std::vector<double> x_vals = {1e-2, 1e-3, 1e-4, 1e-5, 1e-6};
 
     double rmin = 1e-4;
-    double rmax = 10.0;
+    double rmax = 25.0;
     int Nr = 300;
 
     // agora já no formato esperado pelo plot
@@ -164,7 +167,7 @@ void N_p_csv()
 
             double N_val = N_p(r, x_val, dipole);
 
-            fout << r*r << "," << N_val << "\n";
+            fout << r/CFAC << "," << N_val << "\n";
         }
 
         fout.close();
@@ -193,10 +196,12 @@ string N_csv(double x)
     double rmax = 10.0;
     int Nr = 300;
 
+    #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < Nr; ++i) 
     {
         double frac = static_cast<double>(i) / (Nr - 1);
         double r = rmin * pow(rmax / rmin, frac)* CFAC;
+        
 
         double N_val = N_p(r, x, dipole);
 

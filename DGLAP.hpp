@@ -7,7 +7,7 @@
 
 using namespace MZ_ipsat;
 
-namespace DGLAP{
+namespace dipole_DGLAP{
 double amplitude(double x, double Q2, const Meson& M,
                       DipoleAmplitude& dipole,
                        int Nr , 

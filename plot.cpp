@@ -177,12 +177,12 @@ void plot_N_models(const std::vector<std::pair<std::string,std::string>>& files,
         plt::plot(r2, N, {{"label", label}});
     }
 
-    plt::xlabel("$r^2$");
+    plt::xlabel("$r$");
     plt::ylabel("$N_p$");
 
-    plt::title("Amplitude de dipolo $N_p(r^2)$ para diferentes modelos (x=" + doubleParaString(x) + ")");
+    plt::title("Amplitude de dipolo $N_p(r)$ para diferentes modelos ");
 
-    plt::xlim(0.0001,100.0);
+    plt::xlim(0.001,10.0);
     plt::ylim(0.0001,1.2);
 
     PyRun_SimpleString( "import matplotlib.pyplot as plt\n"
@@ -207,7 +207,7 @@ void compare_N_models(double x)
         {IPSAT::N_csv(x), "IPsat"},
         {bCGC::N_csv(x), "bCGC"},
         {GBW::N_csv(x), "GBW"},
-        {DGLAP::N_csv(x), "DGLAP"}
+        {dipole_DGLAP::N_csv(x), "DGLAP"}
     };
 
     plot_N_models(files, x);

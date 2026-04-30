@@ -32,6 +32,7 @@ SRCS = dipoleamplitude.cpp \
        correcs.cpp \
        wavefunctions.cpp \
        DGLAP.cpp \
+       ResolveDGLAP.cpp \
 #       minuit.cpp # liga se for fazer ajuste de parâmetros
 
 TARGET = main

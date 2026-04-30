@@ -2,6 +2,7 @@
 
 const double alfem = 1.0 / 137.0;
 const double Nc    = 3.0;
+const double Nf = 4.0;
 const double lambda = 0.29;
 const double gamma_s = 0.46;
 const double CFAC = 5.07;
@@ -19,9 +20,7 @@ const double ms_GBW = 0.03;
 
 // ------------ PARAMETROS DGLAP ------------------
 
-const double C = 0.38;
-const double mu0_sqrd = 1.73;
-const double sigma0_dglap = 22.40*mb_to_gev2;
+const double sigma0_dglap = 22.60*mb_to_gev2;
 
 const double massa_psi = 3.097;
 const double massa_phi = 1.019;

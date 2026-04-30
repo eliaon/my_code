@@ -26,7 +26,7 @@ double lnA(double y, double Q2, const Meson& M,
         amp = GBW::amplitude(x, Q2, M, gbw);
     }
     else if (dipolemodel == "DGLAP") {
-        amp = DGLAP::amplitude(x, Q2, M, dipole, 200,  1e-4, 10.0);
+        amp = dipole_DGLAP::amplitude(x, Q2, M, dipole, 200,  1e-4, 10.0);
     }
     else if (dipolemodel == "ipsat") {
         amp = IPSAT::amplitude(x, 0.0, Q2, M, 200, 1e-4, 10.0);
