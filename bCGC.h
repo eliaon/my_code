@@ -22,9 +22,9 @@ namespace bCGC {
 
     double amplitude_p(double x, double Q2, const Meson& M);
 
-    std::string N_csv(double x);
+    void N_csv();
 
-    std::string sigma_p_csv();
+    void sigma_p_csv();
 }
 
 

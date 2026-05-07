@@ -16,7 +16,6 @@
 #include "dipoleamplitude.hpp"
 #include "DGLAP.hpp"
 #include <algorithm>
-#include <Math/Functor.h>
 
 
 std::string extrair_nome_base(const std::string& caminho)
@@ -50,12 +49,10 @@ Meson phi_BG_ipsat  ("phi",  "phi_BG",   massa_phi, ms_ipsat, qS, 0.919, 0.825, 
 
 
 
-std::string doubleParaString(double valor, int casas) {
-    std::ostringstream stream;
-    // fixed: garante o número de casas após o ponto
-    // setprecision(n): define o número de casas decimais
-    stream << std::fixed << std::setprecision(casas) << valor;
-    return stream.str();
+std::string doubleParaString(double x) {
+    std::ostringstream oss;
+    oss << std::scientific << std::setprecision(1) << x;
+    return oss.str();
 }
 
 // Derivada por extrapolação de Richardson
@@ -612,4 +609,30 @@ std::string vec_to_pylist(const std::vector<double>& v)
     }
     oss << "]";
     return oss.str();
+}
+
+std::string flavorToString(int flavor) {
+    switch (flavor) {
+        case 1: return "xd";
+        case 2: return "xu";
+        case 3: return "xs";
+        case 4: return "xc";
+        case 5: return "xb";
+        case 6: return "xt";
+        case 21: return "xg";
+        default: return "unknown";
+    }
+}
+
+std::string flavorName(int flavor) {
+    switch (flavor) {
+        case 1: return "down";
+        case 2: return "up";
+        case 3: return "strange";
+        case 4: return "charm";
+        case 5: return "bottom";
+        case 6: return "top";
+        case 21: return "gluon";
+        default: return "unknown";
+    }
 }

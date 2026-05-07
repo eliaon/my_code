@@ -54,11 +54,13 @@ double QS( double x, double b)
     }
 }
 
+double N_correc(double x){
+    return std::pow(1.0 - x, 6); // Correção de threshold para x próximo de 1
+}
+
 double prof(double r, double x, double b)
 {
     double Qs = QS(x, b);
-    const double kappa = 9.9;
-    const double N_0 = 0.558;
 
     double rQs = r * Qs;
 
@@ -74,20 +76,20 @@ double prof(double r, double x, double b)
             (kappa * lambda * Lx));
 
         double N_b = N_0 * std::pow(rQs/2.0, expnt);
-        return N_b * std::pow(1.0-x, 5.26);
+        return N_b * N_correc(x);
 
     } else {
 
         double a = -N_0*N_0*gamma_s*gamma_s /
                    ((1-N_0)*(1-N_0)*std::log(1.0-N_0));
 
-        double b = 0.5 * std::pow(1.0-N_0,
+        double b_ = 0.5 * std::pow(1.0-N_0,
                    -(1.0-N_0)/(N_0*gamma_s));
 
-        double ln = std::log(b * rQs);
+        double ln = std::log(b_ * rQs);
 
         double N_b = 1.0 - std::exp(-a * ln * ln);
-        return N_b * std::pow(1.0-x, 5.26);
+        return N_b * N_correc(x);
     }
 }
 
@@ -96,13 +98,17 @@ double sigma_qq(double r, double x)
     auto integrand = [&](double b) {
         return b * prof(r, x, b);
     };
-    double bmax = 10.0; // Limite superior para a integração em b
-    return 4.0 * M_PI * integrate_simpson(integrand, 0.0, bmax, 200);
+    double bmax = 20.0; // Limite superior para a integração em b
+    return 4.0 *M_PI * integrate_simpson(integrand, 0.0, bmax, 200);
 }
 
-std::string N_csv(double x)
+void N_csv()
 {
-    std::string filename = "csv/N_bCGC_x=" + doubleParaString(x) + ".csv";
+    vector<double> x_values = {1e-4, 1e-3, 1e-2};
+    vector<string> filenames;
+    
+    for (double x : x_values) {
+        std::string filename = "csv/N_bCGC_x=" + doubleParaString(x) + ".csv";
     std::ofstream fout(filename);
     fout << "r,N\n";
 
@@ -116,7 +122,10 @@ std::string N_csv(double x)
         double N_val = N_IIM(r, x); // exemplo para x=1e-4 e x0=1e-2
         fout << r * r << "," << N_val << "\n"; // converte r para fm
     }
-    return filename;
+    filenames.push_back(filename);
+    fout.close();
+}    
+plot_N_multi(filenames, x_values, "bCGC");
 }
 
 
@@ -138,11 +147,11 @@ double sigma_p(double x, double Q2, const Meson& M)
     double R_g = RG(x, Q2, lambda_e, M);
     double beta_corr = beta(x, Q2, lambda_e, M);
     double A2 = (amp * amp) / (16.0 * M_PI * slope);
-    //double correction_factor = R_g * R_g * (1.0 + beta_corr * beta_corr);
-    return  A2*R_g*R_g; // B=4.0 GeV^-2 é um valor típico para o slope
+    double correction_factor = R_g * R_g * (1.0 + beta_corr * beta_corr);
+    return  A2*correction_factor; // B=4.0 GeV^-2 é um valor típico para o slope
 }
 
-std::string sigma_p_csv()
+void sigma_p_csv()
 {
     double Q2 = 0.0;
     const Meson& M_GLC = input_meson("GBW");
@@ -173,6 +182,7 @@ std::string sigma_p_csv()
         W_vals[i]         = W;
         sigma_GLC_vals[i] = s_GLC * GeV2_to_nb;
         sigma_BG_vals[i]  = s_BG  * GeV2_to_nb;
+        cout << "W = " << W << " GeV, sigma_GLC = " << sigma_GLC_vals[i] << " nb, sigma_BG = " << sigma_BG_vals[i] << " nb\n";
     }
 
     auto end = clock::now();
@@ -191,7 +201,7 @@ std::string sigma_p_csv()
     std::cout << "Tempo de execução: " << duration << " ms\n";
     std::cout << "Arquivo '" << filename << "' gerado com sucesso.\n";
 
-    return filename;
+    plot_sigma(M_GLC.meson, filename, "bCGC");
 }
 
 

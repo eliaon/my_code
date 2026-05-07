@@ -55,7 +55,7 @@ extern std::map<std::string, MesonModelsGBW> meson_modelsGBW;
 extern std::map<std::string, MesonModelsipsat> meson_modelsipsat;
 
 // funções
-std::string doubleParaString(double valor, int casas = 2);
+std::string doubleParaString(double x);
 
 double dfridr(const std::function<double(double)>& func,
               double x,
@@ -117,7 +117,8 @@ bool load_set(
 std::string get_meson();
 
 std::string vec_to_pylist(const std::vector<double>& vec);
-
+std::string flavorToString(int flavor);
+std::string flavorName(int flavor);
 
 void read_rapidity_hepdata(
     const std::string& filename,

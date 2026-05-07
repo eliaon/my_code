@@ -3,6 +3,7 @@
 
 extern const double alfem;
 extern const double Nc;
+extern const double Nf;
 extern const double lambda;
 extern const double gamma_s;
 extern const double CFAC;
@@ -18,8 +19,6 @@ extern const double ms_ipsat;
 extern const double mc_GBW;
 extern const double ms_GBW;
 
-extern const double C;
-extern const double mu0_sqrd;
 extern const double sigma0_dglap;
 
 extern const double massa_psi;

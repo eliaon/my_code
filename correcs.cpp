@@ -5,6 +5,7 @@
 #include "DGLAP.hpp"
 #include "ipsat.h"
 #include "bCGC.h"
+#include "IIM.hpp"
 #include "integration.hpp"
 
 #include <cmath>
@@ -33,6 +34,9 @@ double lnA(double y, double Q2, const Meson& M,
     }
     else if (dipolemodel == "bCGC") {
         amp = bCGC::amplitude_p(x, Q2, M);
+    }
+    else if (dipolemodel == "IIM") {
+        amp = IIM::amplitude_p(x, Q2, M);
     }
     else {
         throw std::invalid_argument("Modelo de dipolo desconhecido: " + dipolemodel);

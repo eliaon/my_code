@@ -26,6 +26,8 @@
 #include "ipsat.h"
 #include "DGLAP.hpp"
 #include "bCGC.h"
+#include "LHAPDF.hpp"
+#include "IIM.hpp"
 
 using namespace MZ_ipsat;
 
@@ -54,11 +56,20 @@ int main(){
     //rapidez_PbPb_csv();
     //plot_rapidez_PbPb_phi("csv/phi_rapidez_PbPb_5.36e+03GeV.csv", 5360.0);
     //sigma_p_DGLAP_csv(); // GLC e BG idênticos para DGLAP, pois o modelo é só para o proton
-    dipole_DGLAP::N_p_csv(); // gera os arquivos csv para N(r^2) do modelo DGLAP e plota a curva
+    //dipole_DGLAP::N_p_csv(); // gera os arquivos csv para N(r^2) do modelo DGLAP e plota a curva
     //overlap_csv_fc();
     //sigma_ipsat_integrado_csv(); // gera o csv da seção de choque integrada para ipsat e plota a curva
     //IPSAT::dsigma_dump(); // gera os csvs de dsigma/dt para os W escolhidos e plota as curvas
     //compare_N_models(1e-4); // gera os csvs de N(r) para os modelos escolhidos e plota as curvas
     //plot_sigma_Jpsi(bCGC::sigma_p_csv(), "bCGC"); // gera o csv da seção de choque integrada para bCGC e plota a curva para J/psi
+    //plot_xf_multiQ2();
+
+    //bCGC::sigma_p_csv();
+    IIM::sigma_p_csv();
+    //DipoleModel model("CT14lo");
+    //model.N_csv();
+
+    //plot_sigma_Jpsi("csv/Jpsi_sigma_gammap_IIM.csv", "IIM");
+
     return 0;
 }
