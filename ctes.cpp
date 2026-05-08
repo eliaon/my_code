@@ -24,6 +24,7 @@ const double sigma0_dglap = 22.60*mb_to_gev2;
 
 const double massa_psi = 3.097;
 const double massa_phi = 1.019;
+const double massa_rho = 0.776;
 
 const double R2_psi = 1.5070 * 1.5070;
 const double R2_phi = 3.3922 * 3.3922;

@@ -33,8 +33,10 @@ public:
 // 🔹 Só declaração (extern)
 extern Meson Jpsi_GLC_GBW;
 extern Meson phi_GLC_GBW;
+extern Meson rho_GLC;
 extern Meson Jpsi_BG_GBW;
 extern Meson phi_BG_GBW;
+extern Meson rho_BG;
 
 extern Meson Jpsi_GLC_ipsat;
 extern Meson phi_GLC_ipsat;

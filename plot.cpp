@@ -10,7 +10,7 @@
 #include <filesystem>
 
 #include "matplotlib-cpp/matplotlibcpp.h"
-#include "LHAPDF/LHAPDF.h"
+#include <LHAPDF/LHAPDF.h>
 
 
 #include "utils.h"
@@ -901,6 +901,276 @@ void plot_sigma_phi(std::string csv, std::string dipolemodel)
 }
 
 
+void plot_sigma_rho(std::string csv, std::string dipolemodel)
+{
+    int Q2 = 0;
+
+    std::string plotname = extrair_nome_base(csv);
+
+    // =========================================================
+    // dados teóricos
+    // =========================================================
+
+    std::vector<double> W_th, sigma_GLC, sigma_BG;
+
+    read_csv(
+        csv,
+        W_th,
+        sigma_GLC,
+        sigma_BG
+    );
+
+    // =========================================================
+    // dados experimentais
+    // =========================================================
+
+    std::vector<int> dataset_hera;
+
+    std::vector<double>
+        W_hera,
+        sigma_hera,
+        error_hera;
+
+    read_sigma_exp(
+        "csv/expdata/sigma/rho_photoproduction_ZEUS(1999)_HEPData-ins475083-v1-Table_2.csv",
+        dataset_hera,
+        W_hera,
+        sigma_hera,
+        error_hera
+    );
+
+    std::vector<int> dataset_ZEUS;
+
+    std::vector<double>
+        W_ZEUS,
+        sigma_ZEUS,
+        error_ZEUS;
+
+    read_sigma_exp(
+        "csv/expdata/sigma/rho_ZEUS(1999)HEPData-ins495311-v1-Table_9.csv",
+        dataset_ZEUS,
+        W_ZEUS,
+        sigma_ZEUS,
+        error_ZEUS
+    );
+
+    // =========================================================
+    // figura
+    // =========================================================
+
+    plt::figure_size(800,600);
+
+    // =========================================================
+    // painel superior
+    // =========================================================
+
+    plt::subplot2grid(2,1,0);
+
+    // curvas teóricas
+
+    plt::plot(
+        W_th,
+        sigma_GLC,
+        {{"label","GLC"},
+         {"color","red"},
+         {"linestyle","-"},
+         {"linewidth","1.8"}}
+    );
+
+    plt::plot(
+        W_th,
+        sigma_BG,
+        {{"label","BG"},
+         {"color","red"},
+         {"linestyle","--"},
+         {"linewidth","1.2"}}
+    );
+
+    // dados experimentais
+
+    plt::errorbar(
+        W_hera,
+        sigma_hera,
+        error_hera,
+        {{"fmt","o"},
+         {"color","blue"},
+         {"label","HERA (1998)"}}
+    );
+
+    plt::errorbar(
+        W_ZEUS,
+        sigma_ZEUS,
+        error_ZEUS,
+        {{"fmt","s"},
+         {"color","green"},
+         {"label","ZEUS (1999)"}}
+    );
+
+    plt::ylabel("$\\sigma$ [nb]");
+
+    std::stringstream title;
+
+    title << "$\\phi$ produção exclusiva "
+          << "($\\gamma p \\to \\phi p$)"
+          << " — $Q^2=" << Q2 << "$";
+
+    plt::title(title.str());
+
+    plt::legend();
+
+    // =========================================================
+    // painel inferior : desvio relativo
+    // =========================================================
+
+    plt::subplot2grid(2,1,1);
+
+    std::vector<double> W_exp;
+    std::vector<double> sigma_exp;
+
+    // juntar datasets experimentais
+
+    for(size_t i=0;i<W_hera.size();++i)
+    {
+        W_exp.push_back(W_hera[i]);
+        sigma_exp.push_back(sigma_hera[i]);
+    }
+
+    for(size_t i=0;i<W_ZEUS.size();++i)
+    {
+        W_exp.push_back(W_ZEUS[i]);
+        sigma_exp.push_back(sigma_ZEUS[i]);
+    }
+
+    // desvios
+
+    std::vector<double> dev_GLC;
+    std::vector<double> dev_BG;
+
+    for(size_t i=0; i<W_exp.size(); ++i)
+    {
+        double Wd = W_exp[i];
+
+        double theo_GLC = 0.0;
+        double theo_BG  = 0.0;
+
+        double best = 1e99;
+
+        for(size_t j=0; j<W_th.size(); ++j)
+        {
+            double diff = std::abs(W_th[j] - Wd);
+
+            if(diff < best)
+            {
+                best = diff;
+
+                theo_GLC = sigma_GLC[j];
+                theo_BG  = sigma_BG[j];
+            }
+        }
+
+        dev_GLC.push_back(
+            (theo_GLC - sigma_exp[i]) / sigma_exp[i]
+        );
+
+        dev_BG.push_back(
+            (theo_BG - sigma_exp[i]) / sigma_exp[i]
+        );
+    }
+
+    // GLC
+
+    plt::plot(
+        W_exp,
+        dev_GLC,
+        {{"marker","o"},
+         {"linestyle","none"},
+         {"color","red"},
+         {"label","GLC"}}
+    );
+
+    // BG
+
+    plt::plot(
+        W_exp,
+        dev_BG,
+        {{"marker","x"},
+         {"linestyle","none"},
+         {"color","darkred"},
+         {"label","BG"}}
+    );
+
+    // linha horizontal
+
+    plt::plot(
+        std::vector<double>{8,100},
+        std::vector<double>{0,0},
+        {{"color","black"},
+         {"linestyle","--"}}
+    );
+
+    plt::xlabel("$W$ [GeV]");
+    plt::ylabel("$\\Delta$");
+
+    // =========================================================
+    // ajustes finais
+    // =========================================================
+
+    PyRun_SimpleString(
+        "import matplotlib.pyplot as plt\n"
+
+        "axes = plt.gcf().axes\n"
+
+        // posições
+        "axes[0].set_position([0.12,0.32,0.83,0.63])\n"
+        "axes[1].set_position([0.12,0.10,0.83,0.16])\n"
+
+        // escalas
+        "axes[0].set_xscale('log')\n"
+        "axes[0].set_yscale('log')\n"
+
+        "axes[1].set_xscale('log')\n"
+
+        // grids
+        "axes[0].grid(True, which='both', linestyle='--', alpha=0.6)\n"
+        "axes[1].grid(True, linestyle='--', alpha=0.5)\n"
+
+        // limites
+        "axes[0].set_xlim(8,100)\n"
+        "axes[0].set_ylim(100,10000)\n"
+
+        "axes[1].set_xlim(8,100)\n"
+
+        // remover labels superiores
+        "axes[0].tick_params(labelbottom=False)\n"
+
+        "plt.tight_layout()\n"
+    );
+
+    // =========================================================
+    // salvar
+    // =========================================================
+
+    std::string out =
+        "plots/sigma/" +
+        plotname + "_" +
+        std::to_string(Q2) + "_" +
+        dipolemodel + "_" +
+        timestamp() + ".png";
+
+    std::string label = "Arquivo: " + plotname;
+
+    PyRun_SimpleString(
+        ("import matplotlib.pyplot as plt\n"
+         "plt.figtext(0.01, 0.01, '" +
+         label +
+         "', fontsize=8, alpha=0.7)\n").c_str()
+    );
+
+    plt::save(out);
+
+    plt::show();
+}
+
 
 
 
@@ -910,6 +1180,8 @@ void plot_sigma(std::string meson, std::string csv, std::string dipolemodel)
         plot_sigma_Jpsi(csv, dipolemodel);
     else if(meson == "phi")
         plot_sigma_phi(csv, dipolemodel);
+    else if(meson == "rho")
+        plot_sigma_rho(csv, dipolemodel);
     else
         throw std::runtime_error("Meson desconhecido: " + meson);
 }

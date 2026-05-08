@@ -23,6 +23,7 @@ extern const double sigma0_dglap;
 
 extern const double massa_psi;
 extern const double massa_phi;
+extern const double massa_rho;
 extern const double R2_psi;
 extern const double R2_phi;
 

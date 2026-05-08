@@ -36,9 +36,11 @@ Meson::Meson(std::string m, std::string n, double MV_, double mf_, double ef_,
 
 Meson Jpsi_GLC_GBW("Jpsi", "Jpsi_GLC", massa_psi, mc_GBW, qJ, 1.23, 6.5, 0.83, 3.0);
 Meson phi_GLC_GBW ("phi",  "phi_GLC",  massa_phi, ms_GBW, qS, 4.75, 16.0, 1.41, 9.7);
+Meson rho_GLC("rho", "rho_GLC", massa_rho, 0.14, 1/sqrt(2), 4.47, 21.9, 1.79 , 10.4);
 
 Meson Jpsi_BG_GBW ("Jpsi", "Jpsi_BG",  massa_psi, mc_GBW, qJ, 0.578, 0.575, 2.3);//R2_psi);
 Meson phi_BG_GBW  ("phi",  "phi_BG",   massa_phi, ms_GBW, qS, 0.919, 0.825, 11.2);//R2_phi);
+Meson rho_BG("rho", "rho_BG", massa_rho, ms_GBW, 1/sqrt(2), 0.911, 0.853, 12.9);
 
 Meson Jpsi_GLC_ipsat("Jpsi", "Jpsi_GLC", massa_psi, mc_ipsat, qJ, 1.23, 6.5, 0.83, 3.0);
 Meson phi_GLC_ipsat ("phi",  "phi_GLC",  massa_phi, ms_ipsat, qS, 4.75, 16.0, 1.41, 9.7);
@@ -147,18 +149,20 @@ double W_to_x(double W, const Meson& M) {
 std::map<std::string, MesonModelsGBW> meson_modelsGBW = {
     {"Jpsi", {Jpsi_GLC_GBW, Jpsi_BG_GBW}},
     {"phi", {phi_GLC_GBW, phi_BG_GBW}},
+    {"rho", {rho_GLC, rho_BG}},
 };
 
 std::map<std::string, MesonModelsipsat> meson_modelsipsat = {
     {"Jpsi", {Jpsi_GLC_ipsat, Jpsi_BG_ipsat}},
     {"phi", {phi_GLC_ipsat, phi_BG_ipsat}},
+    {"rho", {rho_GLC, rho_BG}},
 };
 
 // ----------------- função escolhe meson ----------
 Meson input_meson(const std::string model)
 {
     std::string meson_input;
-    std::cout << "Insira o meson (Jpsi, phi): ";
+    std::cout << "Insira o meson (Jpsi, phi, rho): ";
     std::cin >> meson_input;
 
     // -------- NORMALIZAÇÃO --------
@@ -169,6 +173,7 @@ Meson input_meson(const std::string model)
     // padroniza nomes
     if (meson_input == "jpsi") meson_input = "Jpsi";
     else if (meson_input == "phi") meson_input = "phi";
+    else if (meson_input == "rho") meson_input = "rho";
     else {
         std::cerr << "Meson invalido. Usando Jpsi por padrao.\n";
         meson_input = "Jpsi";
@@ -232,7 +237,7 @@ double B_slope(double x, double Q2, const Meson& M) {
         double B1 = 4.80 + 4.0* 0.133 *log(W/90.0); //valores do lhcb dados pelo haimon xdxd
         return B1;
     }
-        else if (M.meson == "phi"){
+        else if (M.meson == "phi" || M.meson == "rho"){
             double B2 = 0.55 * (14.0 / pow((Q2 + M.MV*M.MV), 0.2) + 1.0);
             return B2;}
             else {

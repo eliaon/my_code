@@ -32,7 +32,7 @@
 using namespace MZ_ipsat;
 
 int main(){
-    int threads = 10;
+    int threads = 20;
     omp_set_num_threads(threads);// Ajuste conforme o número de núcleos disponíveis
     //draw_wavefunctions(Jpsi_BG);
     //print_B_values(Jpsi_GLC, 0.0);

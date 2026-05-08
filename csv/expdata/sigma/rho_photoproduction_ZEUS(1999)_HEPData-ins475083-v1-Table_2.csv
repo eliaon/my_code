@@ -1,0 +1,37 @@
+#: table_doi: 10.17182/hepdata.44217.v1/t2
+#: name: Table 2
+#: description: Exclusive RHO0 electro- and photo- production cross section as a function of W from the BPC data set.
+
+#: data_file: Table2.yaml
+#: keyword reactions: E+ P --> E+ RHO0 P | GAMMA P --> RHO0 P | GAMMA* P --> RHO0 P
+#: keyword observables: SIG
+#: keyword phrases: Exclusive | Psi | J/Psi | Integrated Cross Section | Cross Section | Photoproduction | Electron production
+#: keyword cmenergies: 300.0
+#: ABS(T) [GEV**2],,,<0.6
+#: E(P=1) [GeV],,,27.5
+#: E(P=2) [GeV],,,820.0
+#: Q**2 [GEV**2],,,0.47 (BIN=0.25 TO 0.85)
+#: RE,,,E+ P --> E+ RHO0 P
+#: SQRT(S) [GeV],,,300.0,,,,
+W [GEV],W [GEV] LOW,W [GEV] HIGH,SIG [NB],stat +,stat -,sys +,sys -
+23.4,20.0,27.0,5.52,0.18,-0.18,0.64,-0.64
+30.9,27.0,35.0,4.75,0.15,-0.15,0.59,-0.59
+39.9,35.0,45.0,4.62,0.24,-0.24,0.61,-0.61
+49.9,45.0,55.0,4.28,0.15,-0.15,0.56,-0.56
+62.4,55.0,70.0,4.89,0.15,-0.15,0.5,-0.5
+79.8,70.0,90.0,4.72,0.2,-0.2,0.56,-0.56
+
+#: ABS(T) [GEV**2],,,<0.6
+#: E(P=1) [GeV],,,27.5
+#: E(P=2) [GeV],,,820.0
+#: Q**2 [GEV**2],,,0.47 (BIN=0.25 TO 0.85)
+#: RE,,,GAMMA* P --> RHO0 P
+#: SQRT(S) [GeV],,,300.0,,,,
+W [GEV],W [GEV] LOW,W [GEV] HIGH,SIG [NB],stat +,stat -,sys +,sys -
+23.4,20.0,27.0,3160.0,100.0,-100.0,370.0,-370.0
+30.9,27.0,35.0,3160.0,100.0,-100.0,400.0,-400.0
+39.9,35.0,45.0,3190.0,160.0,-160.0,430.0,-430.0
+49.9,45.0,55.0,3740.0,130.0,-130.0,480.0,-480.0
+62.4,55.0,70.0,3610.0,110.0,-110.0,380.0,-380.0
+79.8,70.0,90.0,3440.0,140.0,-140.0,400.0,-400.0
+

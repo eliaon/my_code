@@ -149,7 +149,7 @@ void dsigma_dt_csv(double W, const Meson& M_GLC)
     const Meson& M_BG  = meson_modelsipsat.find(M_GLC.meson)->second.M_BG; //pega o bg correspondente ao meson escolhido
 
     double Q2 = 0.0;
-    std::string W_str = doubleParaString(W, 0);
+    std::string W_str = doubleParaString(W);
     std::string filename ="csv/" + M_GLC.meson + "_dsigma_dt_W=" + W_str + "GeV.csv";
     std::ofstream fout(filename);
     fout << "t,dsigma_dt_GLC,dsigma_dt_BG\n";

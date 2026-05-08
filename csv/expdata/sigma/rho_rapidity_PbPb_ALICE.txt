@@ -1,0 +1,8 @@
+# xyscan Version 4.6.4
+# Date: Fri May  8 17:42:28 2026
+# Scanned by: elian
+# Source: Clipboard
+# Comment: 
+# Format: x, y, -dy, +dy
+0,00829876	447,407	37,037	37,037	
+# EoF
